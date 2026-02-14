@@ -1,0 +1,1717 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  background: #0f1115;
+  color: #e6e6e6;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+:root {
+  /* カード裏（山札と共通） */
+  --card-back-image: url("file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_-48cbe9cf-7eb8-4e72-841f-5754000cab66.png");
+  /* 手札の表示位置（上下調整） */
+  --hand-fan-shift-y-player: -30px;
+  /* 相手手札がロゴ付近に被らないよう下げる */
+  --hand-fan-shift-y-enemy: 60px;
+
+  /* クイック操作（攻撃/ターン終了）を手札から離す量（約3cm目安） */
+  --quick-actions-lift-y: 114px;
+
+  /* HPバッジ位置（プレマに被らないよう黒い余白側） */
+  --hp-badge-top: 18px;
+  --hp-badge-top-enemy: 380px;
+}
+
+/* 背景画像 + 暗幕（盤面を見やすくする） */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  /* file:// で開いたときにキャッシュされやすいのでクエリで更新を効かせる */
+  background-image: url("./assets/background-1920x1080.png?v=2"),
+    url("file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/______background-20aba995-29cd-48fd-8f7a-1671e82218ae.png");
+  /* 余白をなくすために背面は cover で埋める（後段で本体は contain） */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+  filter: blur(18px) saturate(0.9) brightness(0.9);
+  transform: scale(1.06);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  /* 上に「全体が見える」本体画像（contain）＋暗幕 */
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+    url("./assets/background-1920x1080.png?v=2"),
+    url("file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/______background-20aba995-29cd-48fd-8f7a-1671e82218ae.png");
+  background-size: cover, contain, contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(107, 124, 255, 0.20), rgba(0, 0, 0, 0.72) 55%),
+    rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.result-overlay.result-overlay--show {
+  display: grid;
+  animation: resultFadeIn 260ms ease-out both;
+}
+
+@keyframes resultFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.result-card {
+  width: min(520px, calc(100vw - 32px));
+  border-radius: 18px;
+  padding: 18px 18px 14px;
+  background: rgba(21, 25, 36, 0.86);
+  border: 1px solid rgba(230, 230, 230, 0.16);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  transform: translateY(10px) scale(0.98);
+  animation: resultPop 320ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+@keyframes resultPop {
+  from { transform: translateY(16px) scale(0.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.result-title {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-align: center;
+  margin: 2px 0 8px;
+  text-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
+}
+
+.result-subtitle {
+  text-align: center;
+  font-size: 12px;
+  color: #c6cbd6;
+  margin-bottom: 14px;
+}
+
+.result-reset {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 12px;
+}
+
+.result-overlay--player .result-title {
+  color: #eef2ff;
+}
+.result-overlay--enemy .result-title {
+  color: #ffe7c2;
+}
+.result-overlay--draw .result-title {
+  color: #d7dcff;
+}
+
+.deck-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: none;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(107, 124, 255, 0.18), rgba(0, 0, 0, 0.74) 55%),
+    rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.deck-overlay.deck-overlay--show {
+  display: grid;
+  animation: resultFadeIn 260ms ease-out both;
+}
+
+.deck-picker-card {
+  width: min(560px, calc(100vw - 32px));
+  border-radius: 22px;
+  padding: 18px 18px 16px;
+  color: #150a0a;
+  border: 1px solid rgba(35, 18, 18, 0.55);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(197, 20, 20, 0.16), rgba(197, 20, 20, 0) 48%),
+    radial-gradient(circle at 78% 24%, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0) 55%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.035) 0 2px, rgba(0, 0, 0, 0) 2px 6px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(0, 0, 0, 0.08)),
+    #f0e0c2;
+  position: relative;
+  overflow: hidden;
+}
+
+.deck-picker-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 14% 24%, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0) 52%),
+    radial-gradient(circle at 85% 78%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0) 50%);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+
+.deck-picker-header {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.deck-picker-icon {
+  width: 74px;
+  height: 98px;
+  border-radius: 16px;
+  border: 1px solid rgba(35, 18, 18, 0.35);
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+
+/* deck-picker-icon の丸い「封」印は削除 */
+
+.deck-picker-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.10em;
+  text-align: center;
+  margin: 0;
+  color: #1a0c0c;
+  text-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.deck-picker-subtitle {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(26, 12, 12, 0.70);
+}
+
+.deck-picker-actions {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.deck-picker-btn {
+  border: 1px solid rgba(35, 18, 18, 0.55);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(0, 0, 0, 0.06)),
+    rgba(255, 245, 230, 0.78);
+  color: #150a0a;
+  padding: 14px 12px;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, border-color 0.12s ease;
+}
+
+.deck-picker-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
+  border-color: rgba(197, 20, 20, 0.55);
+  filter: saturate(1.05);
+}
+
+.deck-picker-btn:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+.deck-picker-btn-main {
+  display: block;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.deck-picker-btn-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(26, 12, 12, 0.70);
+}
+
+.deck-picker-btn--ss .deck-picker-btn-main {
+  color: #0d1733;
+}
+
+.deck-picker-btn--aw .deck-picker-btn-main {
+  color: #2a0d18;
+}
+
+.deck-picker-note {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  text-align: center;
+  font-size: 10px;
+  color: rgba(26, 12, 12, 0.65);
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+}
+
+.logo {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 120px;
+  height: auto;
+  z-index: 10;
+}
+
+.app {
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 6px 10px 8px;
+  display: grid;
+  grid-template-columns: minmax(960px, 1fr) 260px;
+  gap: 10px;
+  height: 100vh;
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+}
+
+.right-panel {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 130px;
+}
+
+.status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.status-card {
+  padding: 8px 10px;
+  background: rgba(21, 25, 36, 0.78);
+  border: 1px solid rgba(230, 230, 230, 0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.status-label {
+  font-size: 10px;
+  color: #aab2c2;
+  letter-spacing: 0.04em;
+}
+
+.status-value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #eef2ff;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.status-value--phase {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d7dcff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-card--player {
+  border-color: rgba(107, 124, 255, 0.26);
+}
+
+.status-card--enemy {
+  border-color: rgba(244, 195, 111, 0.26);
+}
+
+.status-card--phase {
+  border-color: rgba(230, 230, 230, 0.14);
+}
+
+/* 2枚のプレイマット（相手/自分）で盤面完結 */
+.mat-stack {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 10px;
+  align-content: stretch;
+}
+
+.mat-row {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.side-area {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 6px;
+  align-content: start;
+  justify-items: stretch;
+  padding: 6px 2px;
+}
+
+/* 自分側は「クイック操作 → 手札」を下側に寄せる */
+.side-area--player {
+  grid-template-rows: 1fr auto auto;
+}
+.side-area--player .quick-actions {
+  grid-row: 2;
+  align-self: end;
+  /* 手札の位置調整とは独立して、ボタンを上へ（手札から約3cm） */
+  transform: translateY(calc(-1 * var(--quick-actions-lift-y)));
+  will-change: transform;
+}
+.side-area--player #hand-area {
+  grid-row: 3;
+}
+
+.season-slot {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 4px 0;
+}
+
+/* 盤面（場ゾーン）内に常時表示する季節札 */
+.season-slot--on-field {
+  position: relative;
+  z-index: 25;
+  padding: 0;
+  place-items: start;
+  /* 見た目は縮小するが、当たり判定は縮めない（クリック/ドロップしやすくする） */
+  flex: 0 0 150px;
+  height: 160px;
+}
+
+/* 相手側プレマは全体が180°回転しているため、季節札表示は打ち消して正立させる */
+.mat--enemy .season-slot--on-field {
+  transform: rotate(180deg);
+  transform-origin: top right;
+}
+
+.season-slot--on-field .season-stack {
+  position: relative;
+  width: 110px;
+  height: 160px;
+  justify-content: flex-start;
+  gap: 0;
+  /* 場を圧迫しないよう縮小（見た目だけ） */
+  transform: scale(0.78);
+  transform-origin: top left;
+}
+
+/* 相手側は右基準で縮小 */
+.mat--enemy .season-slot--on-field .season-stack {
+  transform-origin: top right;
+}
+
+/* 場のカード列が季節札の下に潜らないよう、左右に“空き”を作る */
+/* 季節札は mat-zone--field の左に固定表示するので、場のカード列の余白は不要 */
+
+/* 季節札の上の場所札は必ず季節札より前面に */
+.season-slot--on-field .season-card {
+  position: relative;
+  z-index: 1;
+}
+
+/* 上の場所札は重ね表示（右下に小さく） */
+.season-slot--on-field .season-top-card {
+  position: absolute;
+  /* 場ゾーンに食い込ませない（ドロップ/クリックが場に吸われるのを防ぐ） */
+  right: 0;
+  bottom: 0;
+  width: 82px;
+  height: 120px;
+  z-index: 3;
+  /* button化してもサイズが膨らまないようにリセット */
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+}
+.season-slot--on-field .season-top-card .field-card {
+  border-radius: 16px;
+}
+.season-slot--on-field .season-top-card--empty {
+  border-radius: 16px;
+  /* buttonのデフォルト装飾を完全に無効化（当たり判定だけ残す） */
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  cursor: pointer;
+  border: 1px dashed rgba(230, 230, 230, 0.25);
+  background: rgba(15, 17, 21, 0.12);
+}
+
+.season-stack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.season-card {
+  width: 110px;
+  height: 160px;
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(230, 230, 230, 0.18);
+  background: rgba(15, 17, 21, 0.22);
+}
+
+.season-top-card {
+  width: 120px;
+  height: 175px;
+  display: grid;
+  place-items: center;
+}
+
+.season-top-card .field-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+}
+
+.season-top-card--empty {
+  border: 1px dashed rgba(230, 230, 230, 0.25);
+  border-radius: 22px;
+  background: rgba(15, 17, 21, 0.12);
+}
+
+.side-area--player-hp,
+.side-area--enemy-hp {
+  padding-top: var(--hp-badge-top);
+}
+
+.side-area--enemy-hp {
+  padding-top: var(--hp-badge-top-enemy);
+}
+
+.hp-badge {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 35%),
+    radial-gradient(circle at 40% 40%, #2a3040 0%, #141a29 52%, rgba(15, 17, 21, 0.95) 100%);
+  border: 1px solid rgba(230, 230, 230, 0.22);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.hp-badge-number {
+  font-size: 26px;
+  font-weight: 900;
+  color: #eef2ff;
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+  line-height: 1;
+}
+
+/* 自分プレマ左側＝左カラムの右寄せ */
+.hp-badge--player {
+  justify-self: end;
+}
+
+/* 相手視点の左側＝右カラムの左寄せ */
+.hp-badge--enemy {
+  justify-self: start;
+}
+
+.side-area-title {
+  font-size: 11px;
+  color: #9aa2b2;
+}
+
+/* 手札：実際に手に持ってる風（扇状） */
+.hand-fan {
+  min-height: 0;
+  height: 260px;
+  width: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+.hand-fan--player {
+  transform: translateY(var(--hand-fan-shift-y-player, 0px));
+}
+
+.hand-fan--enemy {
+  transform: translateY(var(--hand-fan-shift-y-enemy, 0px));
+}
+
+.hand-fan--player {
+  align-self: end;
+}
+
+.hand-fan--enemy {
+  align-self: start;
+}
+
+.hand-fan .card,
+.hand-fan .card-back {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform-origin: 50% 100%;
+  margin: 0;
+  border-radius: 22px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  transform: var(--fan-transform, translateX(-50%));
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+/* 相手手札は「上で持って下に開く」 */
+.hand-fan--enemy .card,
+.hand-fan--enemy .card-back {
+  /* 上端ピッタリを支点にすると回転で上にはみ出すので、握り位置を少し下げる */
+  top: 22px;
+  bottom: auto;
+  /* 支点も少し内側にして自然に */
+  transform-origin: 50% 12%;
+}
+
+.hand-fan--player .card:hover {
+  transform: var(--fan-transform, translateX(-50%)) translateY(-24px) scale(1.06);
+  z-index: 999;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.5));
+}
+
+.hand-fan--player .card:focus-visible {
+  transform: var(--fan-transform, translateX(-50%)) translateY(-24px) scale(1.06);
+  z-index: 999;
+  outline: 2px solid #f4c36f;
+  outline-offset: 2px;
+}
+
+.hand-fan--player .card,
+.hand-fan--player .card-back {
+  width: 150px;
+  height: 220px;
+}
+
+.hand-fan--enemy .card,
+.hand-fan--enemy .card-back {
+  width: 120px;
+  height: 175px;
+}
+
+.hand-fan .card {
+  min-height: 0;
+  background: transparent;
+  border: none;
+}
+
+.hand-fan .card-back {
+  background: #1a2133;
+  border: 1px solid #2b3346;
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-position: center;
+}
+
+/* 怪異札の憑依表示など、どこでも共通の裏面 */
+.card-back {
+  background: #1a2133;
+  border: 1px solid #2b3346;
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-position: center;
+}
+
+.mat {
+  position: relative;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 1799 / 1320;
+  border-radius: 12px;
+  /* 魂ポップアップ等がはみ出せるように */
+  overflow: visible;
+  justify-self: center;
+}
+
+/* 相手側プレイシートは対面になるよう逆向き（180°） */
+.mat--enemy {
+  transform: rotate(180deg);
+  transform-origin: center;
+}
+
+.playmat-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.35;
+  filter: saturate(1.05) contrast(1.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* プレマ上に載せる当たり判定ゾーン */
+.mat-zone {
+  position: absolute;
+  z-index: 1;
+  min-height: 0;
+  display: grid;
+}
+
+/* 枠線検出（1799x1320）からの推定座標（%） */
+.mat-zone--field {
+  left: 4.45%;
+  top: 5.98%;
+  width: 91.00%;
+  height: 27.80%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 相手側はプレマ自体が180°回転しているため、並びを反転して「左に季節札」を維持 */
+.mat--enemy .mat-zone--field {
+  flex-direction: row-reverse;
+}
+
+.mat-zone--hand {
+  left: 4.45%;
+  top: 36.21%;
+  width: 58.31%;
+  height: 27.73%;
+  display: grid;
+  grid-template-rows: 1fr;
+  gap: 6px;
+}
+
+/* 手札付近のクイック操作（攻撃/ターン終了） */
+.quick-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(12px, 1.2vw, 18px);
+  flex-wrap: wrap;
+  z-index: 30;
+  pointer-events: auto;
+  padding: 0;
+}
+
+.quick-actions-btn {
+  /* 体感「上下左右 +0.5cm」くらい大きく */
+  padding: calc(6px + 0.5cm) calc(12px + 0.5cm);
+  line-height: 1.1;
+  font-size: clamp(11px, 1.2vw, 13px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(0, 0, 0, 0.18)),
+    rgba(21, 25, 36, 0.88);
+  color: #eef2ff;
+  border: 1px solid rgba(230, 230, 230, 0.18);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.40);
+  backdrop-filter: blur(8px);
+}
+
+.quick-actions-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(244, 195, 111, 0.55);
+}
+
+.quick-actions-btn:disabled {
+  background: rgba(59, 66, 84, 0.70);
+  border-color: rgba(230, 230, 230, 0.12);
+  color: #aab2c2;
+  transform: none;
+}
+
+@media (max-width: 1100px) {
+  .quick-actions {
+    gap: clamp(10px, 1.2vw, 14px);
+  }
+  .quick-actions-btn {
+    padding: calc(5px + 0.5cm) calc(10px + 0.5cm);
+  }
+}
+
+/* 右上（コントロール欄）の「攻撃/ターン終了」は非表示（クイック操作に集約） */
+.controls #attack-btn,
+.controls #end-btn {
+  display: none;
+}
+
+.mat-zone--deck {
+  left: 64.48%;
+  top: 36.21%;
+  width: 14.65%;
+  height: 27.73%;
+  display: grid;
+  place-items: center;
+}
+
+.mat-zone--banish {
+  left: 80.82%;
+  top: 36.21%;
+  width: 14.99%;
+  height: 27.73%;
+  /* 除外のポップアップがはみ出せるように */
+  overflow: visible;
+}
+
+.mat-zone--soul {
+  left: 4.45%;
+  top: 66.29%;
+  width: 91.00%;
+  height: 27.05%;
+  overflow: visible;
+}
+
+.opponent-hand-zone {
+  grid-area: opponent-hand;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.opponent-deck-zone {
+  grid-area: opponent-deck;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.opponent-life-zone {
+  grid-area: opponent-life;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.center-field-zone {
+  grid-area: center-field;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.player-life-zone {
+  grid-area: player-life;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.player-hand-zone {
+  grid-area: player-hand;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.player-hand-zone .area-title {
+  margin-bottom: 4px;
+}
+
+.hand-column {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 6px;
+  min-width: 0;
+}
+
+.life-box {
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.board {
+  display: none;
+}
+
+.board-rows {
+  display: none;
+}
+
+.field {
+  background: transparent;
+  border: 1px solid rgba(230, 230, 230, 0.22);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.field-title {
+  font-size: 11px;
+  color: #9aa2b2;
+  margin-bottom: 4px;
+}
+
+.field-body {
+  min-height: 0;
+  flex: 0 0 120px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background: transparent;
+  border-radius: 6px;
+  overflow-x: auto;
+  overflow-y: visible;
+  height: 120px;
+  gap: 10px;
+  padding: 6px;
+}
+
+.middle {
+  display: none;
+}
+
+.hand,
+.pile {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.area-title {
+  font-size: 12px;
+  color: #9aa2b2;
+  margin-bottom: 8px;
+}
+
+.card-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+}
+
+.open-hand {
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+
+.open-hand .card {
+  min-height: 95px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.card {
+  background: #1a2133;
+  border: 1px solid #2b3346;
+  border-radius: 28px;
+  overflow: hidden;
+  padding: 0;
+  min-height: 110px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+  position: relative;
+}
+
+.card-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+  background: transparent;
+  transform-origin: center;
+}
+
+/* どのゾーンでもカード全体を見せる（トリミングしない） */
+.card .card-image,
+.banish-card .card-image,
+.field-card .card-image,
+.soul-preview-card .card-image {
+  object-fit: contain;
+  background: transparent;
+}
+
+.field-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 220px;
+  align-items: center;
+  text-align: center;
+  border-radius: 28px;
+  overflow: visible;
+  max-height: 100%;
+  position: relative;
+  height: 100%;
+  aspect-ratio: 80 / 110;
+}
+
+.field-card-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.field-card--selected {
+  outline: 2px solid #f4c36f;
+  outline-offset: -2px;
+}
+
+.field-card--possess-target {
+  outline: 2px solid rgba(107, 124, 255, 0.95);
+  outline-offset: -2px;
+}
+
+.field-card--attackable {
+  box-shadow:
+    0 0 0 2px rgba(244, 195, 111, 0.55),
+    0 16px 34px rgba(0, 0, 0, 0.4);
+}
+
+.possession-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 900;
+  color: #eef2ff;
+  background: rgba(15, 17, 21, 0.78);
+  border: 1px solid rgba(230, 230, 230, 0.22);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45);
+  z-index: 5;
+}
+
+/* 憑依札：場所札の下に差し込まれて見える（ワンピカードアプリ風） */
+.possession-under {
+  position: absolute;
+  left: 50%;
+  bottom: -24px;
+  transform: translateX(-50%);
+  width: 86%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.possession-under-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  transform: translateY(calc((var(--pos-i, 0) + 1) * 12px)) scale(0.92);
+  opacity: 0.98;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+}
+
+.possession-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 52%;
+  transform: none;
+  pointer-events: none;
+  z-index: 6;
+  display: grid;
+  place-items: stretch;
+}
+
+/* 「起きの形の裏向け」で右半分を隠す */
+.possession-overlay-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 0 28px 28px 0;
+  box-shadow: -10px 0 24px rgba(0, 0, 0, 0.35);
+  opacity: 0.98;
+}
+
+/* 憑依中も枠内で安定表示 */
+.field-card--possessed {
+  overflow: visible;
+}
+
+.field-card.card-set {
+  filter: saturate(0.85) brightness(0.85);
+  /* 横向きになったら横向きのサイズにする */
+  aspect-ratio: 110 / 80;
+}
+
+.field-card.card-facedown {
+  transform: none;
+}
+
+.field-card.card-set .card-image {
+  /* 横向き（伏せ）表示：サイズは枠側の aspect-ratio で合わせる */
+  transform: rotate(-90deg);
+}
+
+.field-card.card-facedown .card-back--field {
+  transform: rotate(-90deg) scale(0.92);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: #6b7cff;
+}
+
+.card.selected {
+  outline: 2px solid #f4c36f;
+  outline-offset: -2px;
+}
+
+.card--play-selected {
+  outline: 2px solid rgba(107, 124, 255, 0.95);
+  outline-offset: 2px;
+}
+
+.card-name {
+  font-weight: 600;
+}
+
+.card-desc {
+  font-size: 10px;
+  color: #c6cbd6;
+}
+
+.card-meta {
+  font-size: 9px;
+  color: #9aa2b2;
+}
+
+.pile-card {
+  width: 100%;
+  height: 90px;
+  border: 2px dashed #2b3346;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+
+.banish-area {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+}
+
+/* 直近の除外札（常時表示） */
+.banish-top {
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(230, 230, 230, 0.20);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  background: rgba(15, 17, 21, 0.22);
+  position: relative;
+}
+
+/* 直近より前の枚数 */
+.banish-prev-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(15, 17, 21, 0.78);
+  border: 1px solid rgba(230, 230, 230, 0.25);
+  color: #e6e6e6;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 999px;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  z-index: 3;
+}
+
+/* 直近より前：ホバーで表向き一覧 */
+.banish-prev-popup {
+  position: absolute;
+  right: 0;
+  left: auto;
+  bottom: calc(100% + 8px);
+  width: 340px;
+  max-width: min(340px, calc(100vw - 24px));
+  background: rgba(15, 19, 32, 0.96);
+  border: 1px solid rgba(230, 230, 230, 0.18);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 50;
+}
+
+.banish-prev-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.banish-prev-card {
+  background: #1a2133;
+  border: 1px solid #2b3346;
+  border-radius: 10px;
+  padding: 0;
+  min-height: 56px;
+  opacity: 0.95;
+  position: relative;
+  aspect-ratio: 80 / 110;
+  overflow: hidden;
+}
+
+.banish-area:hover .banish-prev-popup,
+.banish-area:focus-within .banish-prev-popup {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* 相手側プレマは180°回転しているので、除外表示は打ち消して正立させる */
+.mat--enemy .banish-area {
+  transform: rotate(180deg);
+  transform-origin: center;
+}
+
+.banish-card .card-name {
+  font-size: 9px;
+}
+
+.banish-card .card-meta {
+  font-size: 8px;
+}
+
+.banish-card .card-desc {
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.deck-card {
+  width: 80px;
+  height: 110px;
+  border-radius: 18px;
+  border: 1px solid #2b3346;
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.deck-count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: #e6e6e6;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  font-weight: 700;
+}
+
+.soul {
+  background: transparent;
+  border: 1px solid rgba(230, 230, 230, 0.16);
+  border-radius: 8px;
+  padding: 6px;
+  min-height: 0;
+}
+
+.soul-row {
+  display: flex;
+  gap: 10px;
+}
+
+.soul-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.soul-area {
+  background: transparent;
+  border: 1px solid rgba(230, 230, 230, 0.12);
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.soul-area-title {
+  font-size: 9px;
+  color: #9aa2b2;
+  margin-bottom: 3px;
+}
+
+.soul-card-row {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+  gap: 4px;
+  overflow: visible;
+}
+
+.soul-preview-card {
+  background: #1a2133;
+  border: 1px solid #2b3346;
+  border-radius: 12px;
+  padding: 0;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  aspect-ratio: 80 / 110;
+}
+
+/* 魂になったカードは逆さ表示 */
+.mat-zone--soul .soul-preview-card,
+.mat-zone--soul .soul-stack-card,
+.mat-zone--soul .soul-preview-card--tiny {
+  transform: rotate(180deg);
+}
+
+.soul-preview-card--tiny {
+  min-height: 56px;
+  border-radius: 10px;
+  opacity: 0.95;
+}
+
+.soul-stack {
+  position: relative;
+  width: 72px;
+  min-height: 80px;
+  border-radius: 12px;
+  border: 1px solid rgba(230, 230, 230, 0.18);
+  background: rgba(0, 0, 0, 0.18);
+  flex: 0 0 auto;
+  cursor: pointer;
+  outline: none;
+}
+
+.soul-stack-preview {
+  position: absolute;
+  inset: 0;
+}
+
+.soul-stack-card {
+  position: absolute;
+  inset: 0;
+  transform: translateX(calc(var(--stack-i, 0) * 6px));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.soul-stack-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(15, 17, 21, 0.78);
+  border: 1px solid rgba(230, 230, 230, 0.25);
+  color: #e6e6e6;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+.soul-stack-popup {
+  position: absolute;
+  right: 0;
+  left: auto;
+  bottom: calc(100% + 8px);
+  width: 360px;
+  max-width: min(360px, calc(100vw - 24px));
+  background: rgba(15, 19, 32, 0.96);
+  border: 1px solid rgba(230, 230, 230, 0.18);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 50;
+}
+
+.soul-stack-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.soul-stack:hover .soul-stack-popup,
+.soul-stack:focus-visible .soul-stack-popup {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.soul-preview-card .card-name {
+  font-size: 8px;
+}
+
+.soul-preview-card .card-meta {
+  font-size: 7px;
+}
+
+.controls {
+  display: grid;
+  gap: 6px;
+}
+
+.main-phase {
+  background: #151924;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.main-phase-body {
+  display: grid;
+  gap: 6px;
+}
+
+.bgm {
+  background: #151924;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.bgm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bgm-collapse {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.bgm.bgm--collapsed .bgm-body {
+  display: none;
+}
+
+.bgm.bgm--collapsed {
+  padding-bottom: 6px;
+}
+
+.bgm-body {
+  display: grid;
+  gap: 8px;
+}
+
+.bgm-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.bgm-setting {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bgm-setting--grow {
+  min-width: 0;
+}
+
+.bgm-setting-label {
+  font-size: 10px;
+  color: #9aa2b2;
+}
+
+.bgm-setting input[type="text"] {
+  width: 100%;
+  border: 1px solid #2b3346;
+  background: #0f1320;
+  color: #e6e6e6;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+
+.bgm-setting input[type="file"] {
+  width: 100%;
+  font-size: 10px;
+  color: #c6cbd6;
+}
+
+.bgm-note {
+  font-size: 9px;
+  color: #9aa2b2;
+  line-height: 1.4;
+}
+
+button {
+  border: none;
+  background: #6b7cff;
+  color: #0f1115;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+button:disabled {
+  background: #3b4254;
+  color: #9aa2b2;
+  cursor: not-allowed;
+}
+
+.log {
+  background: #151924;
+  border-radius: 10px;
+  padding: 8px;
+  min-height: 0;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.log-toggle {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.log.log--collapsed .log-body {
+  display: none;
+}
+
+.log.log--collapsed {
+  padding-bottom: 6px;
+}
+
+.rules {
+  background: #151924;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.rules-body {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #c6cbd6;
+}
+
+.log-body {
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+  overflow-y: auto;
+  font-size: 10px;
+  line-height: 1.6;
+  background: #0f1320;
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.fan-row {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  min-height: 0;
+  height: 120px;
+}
+
+/* プレマ枠内に収めるため、mat内では高さを自動に寄せる */
+.mat-zone--hand .fan-row {
+  height: 100%;
+}
+.mat-zone--hand .card-row {
+  min-height: 0;
+}
+.mat-zone--field .field-body {
+  /* 季節札スロットと横並びでも「空の場」をクリックできる高さを確保 */
+  flex: 1 1 auto;
+  height: 120px;
+  min-height: 120px;
+}
+
+.fan-row .card,
+.fan-row .card-back {
+  width: 80px;
+  height: 110px;
+  margin: 0 -18px;
+  transform-origin: center 100%;
+}
+
+.fan-row .card-back {
+  background: #1a2133;
+  border: 1px solid #2b3346;
+  border-radius: 18px;
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-position: center;
+}
+
+.card-back--field {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  border: 1px solid #2b3346;
+  background-image: var(--card-back-image);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: #1a2133;
+}
+
+.fan-row.player-hand .card:nth-child(1) {
+  transform: rotate(-18deg) translateY(8px);
+}
+.fan-row.player-hand .card:nth-child(2) {
+  transform: rotate(-9deg) translateY(4px);
+}
+.fan-row.player-hand .card:nth-child(3) {
+  transform: rotate(-3deg);
+}
+.fan-row.player-hand .card:nth-child(4) {
+  transform: rotate(3deg);
+}
+.fan-row.player-hand .card:nth-child(5) {
+  transform: rotate(9deg) translateY(4px);
+}
+.fan-row.player-hand .card:nth-child(6) {
+  transform: rotate(18deg) translateY(8px);
+}
+.fan-row.player-hand .card:nth-child(n + 7) {
+  transform: rotate(0deg);
+}
+
+.fan-row.enemy-hand {
+  align-items: flex-start;
+}
+
+.drop-target {
+  outline: 2px dashed transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.12s ease, background-color 0.12s ease;
+}
+
+.drop-target.dragover {
+  outline-color: #6b7cff;
+  background-color: rgba(107, 124, 255, 0.08);
+}

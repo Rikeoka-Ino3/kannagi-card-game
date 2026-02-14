@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>巫カードゲーム</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a
+      href="https://www.kannagi-cardgame.jp/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="巫CARDGAME 公式サイトを開く"
+    >
+      <img
+        class="logo"
+        src="file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/__________2026-02-12_11.56.21-e0d8f1a9-8654-4f82-bac9-53656c25d30c.png"
+        alt="巫カードゲーム ロゴ"
+      />
+    </a>
+    <main class="app">
+      <div class="left-panel">
+        <section class="mat-stack" aria-label="盤面">
+          <div class="mat-row mat-row--enemy" aria-label="相手側">
+            <div class="side-area side-area--enemy">
+              <div id="enemy-hand-area" class="hand-fan hand-fan--enemy"></div>
+            </div>
+
+            <div class="mat mat--enemy" aria-label="相手プレイマット">
+              <div id="enemy-playmat-layer" class="playmat-layer" aria-hidden="true"></div>
+
+              <div class="mat-zone mat-zone--field">
+                <div id="enemy-season-area" class="season-slot season-slot--on-field" aria-label="相手の季節札"></div>
+                <div id="enemy-field" class="field-body"></div>
+              </div>
+
+              <div class="mat-zone mat-zone--deck">
+                <div id="enemy-deck-area" class="pile-card deck-card">
+                  <span id="enemy-deck-count" class="deck-count">0</span>
+                </div>
+              </div>
+
+              <div class="mat-zone mat-zone--banish">
+                <div id="enemy-banish-area" class="banish-area"></div>
+              </div>
+
+              <div class="mat-zone mat-zone--soul">
+                <div id="enemy-soul-area" class="soul-card-row soul-preview"></div>
+              </div>
+            </div>
+
+            <!-- 自分視点の右側（= 相手視点の左側）に相手HP -->
+            <div class="side-area side-area--enemy-hp" aria-label="相手HP">
+              <div class="hp-badge hp-badge--enemy">
+                <div class="hp-badge-number" id="enemy-hp">0</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mat-row mat-row--player" aria-label="自分側">
+            <div class="side-area side-area--player-hp" aria-label="自分HP">
+              <div class="hp-badge hp-badge--player">
+                <div class="hp-badge-number" id="player-hp">0</div>
+              </div>
+            </div>
+
+            <div class="mat mat--player" aria-label="自分プレイマット">
+              <div id="player-playmat-layer" class="playmat-layer" aria-hidden="true"></div>
+
+              <div class="mat-zone mat-zone--field">
+                <div id="player-season-area" class="season-slot season-slot--on-field" aria-label="自分の季節札"></div>
+                <div id="player-field" class="field-body"></div>
+              </div>
+
+              <div class="mat-zone mat-zone--hand">
+                <div id="open-hand-area" class="card-row open-hand"></div>
+              </div>
+
+              <div class="mat-zone mat-zone--deck">
+                <div id="deck-area" class="pile-card deck-card">
+                  <span id="deck-count" class="deck-count">0</span>
+                </div>
+              </div>
+
+              <div class="mat-zone mat-zone--banish">
+                <div id="banish-area" class="banish-area"></div>
+              </div>
+
+              <div class="mat-zone mat-zone--soul">
+                <div id="player-soul-area" class="soul-card-row soul-preview"></div>
+              </div>
+            </div>
+
+            <div class="side-area side-area--player">
+              <div class="quick-actions" aria-label="クイック操作">
+                <button id="quick-attack-btn" type="button" class="quick-actions-btn">攻撃</button>
+                <button id="quick-end-btn" type="button" class="quick-actions-btn">ターン終了</button>
+              </div>
+              <div id="hand-area" class="hand-fan hand-fan--player"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="right-panel">
+        <section class="controls">
+          <button id="reset-btn">開始 / リセット</button>
+          <button id="mulligan-btn">0探し</button>
+          <button id="mulligan-confirm-btn">0探し確定</button>
+          <button id="attack-btn">攻撃</button>
+          <button id="end-btn">ターン終了</button>
+        </section>
+
+        <section class="main-phase">
+          <div class="area-title">メインフェイズ宣言</div>
+          <div class="main-phase-body">
+            <button id="declare-location-summon" type="button">【場所札】召喚</button>
+            <button id="declare-location-attack" type="button">【場所札】攻撃</button>
+            <button id="declare-anomaly-possess" type="button">【怪異札】憑依</button>
+            <button id="declare-season-deploy" type="button">【季節札】展開</button>
+            <button id="declare-tool-use" type="button">【道具札】発動</button>
+          </div>
+        </section>
+
+        <section id="bgm-section" class="bgm">
+          <div class="bgm-header">
+            <div class="area-title">BGM</div>
+            <button id="bgm-collapse" type="button" class="bgm-collapse">縮小</button>
+          </div>
+          <div class="bgm-body">
+            <div class="bgm-row">
+              <button id="bgm-toggle" type="button">再生</button>
+              <label class="bgm-setting">
+                <span class="bgm-setting-label">音量</span>
+                <input id="bgm-volume" type="range" min="0" max="1" step="0.05" value="0.15" />
+              </label>
+            </div>
+            <label class="bgm-setting">
+              <span class="bgm-setting-label">BGMファイル</span>
+              <input id="bgm-file" type="file" accept="audio/*" />
+            </label>
+            <div class="bgm-row">
+              <label class="bgm-setting bgm-setting--grow">
+                <span class="bgm-setting-label">BGM URL（例: ./bgm.mp3）</span>
+                <input id="bgm-url" type="text" placeholder="./bgm.mp3" />
+              </label>
+              <button id="bgm-load" type="button">読み込み</button>
+            </div>
+            <div class="bgm-note">
+              ※自動再生はブラウザにより制限されます。最初は「再生」ボタンを押してください。
+            </div>
+          </div>
+        </section>
+
+        <section id="log-section" class="log">
+          <div class="log-header">
+            <div class="area-title">ログ</div>
+            <button id="log-toggle" type="button" class="log-toggle">縮小</button>
+          </div>
+          <div id="log-area" class="log-body"></div>
+        </section>
+      </div>
+    </main>
+
+    <div id="result-overlay" class="result-overlay" aria-hidden="true">
+      <div class="result-card" role="dialog" aria-modal="true" aria-label="勝敗結果">
+        <div id="result-title" class="result-title">勝敗</div>
+        <div id="result-subtitle" class="result-subtitle">開始/リセットで再戦</div>
+        <button id="result-reset" type="button" class="result-reset">開始 / リセット</button>
+      </div>
+    </div>
+
+    <div id="deck-overlay" class="deck-overlay" aria-hidden="true">
+      <div class="deck-picker-card" role="dialog" aria-modal="true" aria-label="デッキ選択">
+        <div class="deck-picker-header">
+          <div class="deck-picker-icon" aria-hidden="true"></div>
+          <div class="deck-picker-title">デッキ選択</div>
+          <div class="deck-picker-subtitle">春夏 / 秋冬を選んで開始</div>
+        </div>
+        <div class="deck-picker-actions">
+          <button id="deck-pick-spring-summer" type="button" class="deck-picker-btn deck-picker-btn--ss">
+            <span class="deck-picker-btn-main">春夏デッキ</span>
+            <span class="deck-picker-btn-sub">相手：秋冬</span>
+          </button>
+          <button id="deck-pick-autumn-winter" type="button" class="deck-picker-btn deck-picker-btn--aw">
+            <span class="deck-picker-btn-main">秋冬デッキ</span>
+            <span class="deck-picker-btn-sub">相手：春夏</span>
+          </button>
+        </div>
+        <div class="deck-picker-note">※デッキは各カード4枚固定（計40枚）</div>
+      </div>
+    </div>
+
+    <script src="./main.js"></script>
+  </body>
+</html>
