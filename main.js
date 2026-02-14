@@ -103,7 +103,7 @@ const imageCardCatalog = [
     season: "春",
     cost: 0,
     imageUrl:
-      "./レモンちゃんデッキ/いちごちゃん.jpg",
+      "./レモンちゃんデッキ/いちごちゃん.jpg",
     summonEffect: (self, foe) => {
       self.hp += 2;
       foe.hp += 2;
@@ -209,7 +209,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 3,
     imageUrl:
-      "./レモンちゃんデッキ/おばけはっけん.jpg",
+      "./レモンちゃんデッキ/おばけはっけん.jpg",
     attackEffect: (self, foe) => {
       const removed = exileFromSoul(foe, 1, (c) => c.attribute === "場所札");
       return `相手の魂の【場所札】を${removed}枚除外`;
@@ -295,7 +295,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 8,
     imageUrl:
-      "./レモンちゃんデッキ/エビ来た!.jpg",
+      "./レモンちゃんデッキ/エビ来た!.jpg",
     attackEffect: (self, foe) => {
       const dealt = applyDamage(foe, 2);
       return `相手に2点ダメージ（実ダメ${dealt}）`;
