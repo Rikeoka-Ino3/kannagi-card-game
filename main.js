@@ -11,11 +11,11 @@ const applyDamage = (target, amount) => {
 };
 
 const lemonImageUrl =
-  "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/________-8bc29849-194b-4247-a356-fc23ef3a3782.png";
+  "./レモンちゃんデッキ/春のれもんちゃん.jpg";
 
 // デフォルトのプレマシート（ユーザーが未設定のときだけ使われる）
 const defaultPlaymatUrl =
-  "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_______-dcc0f3fc-25d0-4dc6-8f58-5684dfdd50a8.png";
+  "./プレマ.avif";
 
 const seasons = ["春", "夏", "秋", "冬", "無"];
 
@@ -65,7 +65,7 @@ const imageCardCatalog = [
     cost: 0,
     power: 1,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/________-975eb5b9-2a32-4dad-9a2e-b85c9bcfd245.png",
+      "./レモンちゃんデッキ/夏のれもんちゃん.jpg",
     summonEffect: () => "（効果なし）",
   },
   {
@@ -77,7 +77,7 @@ const imageCardCatalog = [
     cost: 0,
     power: 1,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/________-cf85daf8-5140-41f6-bd3c-8fe23aa46d9f.png",
+      "./レモンちゃんデッキ/秋のれもんちゃん.jpg",
     summonEffect: () => "（効果なし）",
   },
   {
@@ -89,7 +89,7 @@ const imageCardCatalog = [
     cost: 0,
     power: 1,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/________-74f7c475-d14e-4b0b-98a3-37fa22ae59d5.png",
+      "./レモンちゃんデッキ/冬のれもんちゃん.jpg",
     summonEffect: () => "（効果なし）",
   },
   {
@@ -100,7 +100,7 @@ const imageCardCatalog = [
     season: "春",
     cost: 0,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_______-cfbd23cf-b5c9-42ef-bcc1-297963710632.png",
+      "./レモンちゃんデッキ/いちごちゃん.jpg",
     summonEffect: (self, foe) => {
       self.hp += 2;
       foe.hp += 2;
@@ -115,7 +115,7 @@ const imageCardCatalog = [
     season: "夏",
     cost: 0,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/______-a3fd94de-b4e7-4ad1-a65b-bf997dffb554.png",
+      "./レモンちゃんデッキ/すいかちゃん.jpg",
     summonEffect: (self, foe) => {
       const a = applyDamage(self, 2);
       const b = applyDamage(foe, 2);
@@ -130,7 +130,7 @@ const imageCardCatalog = [
     season: "秋",
     cost: 0,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_____-fac1ddbb-051e-4c01-9d20-1f0868518909.png",
+      "./レモンちゃんデッキ/かきちゃん.jpg",
     summonEffect: (self, foe) => {
       const a = drawN(self, "自分", 1);
       const b = drawN(foe, "相手", 1);
@@ -145,7 +145,7 @@ const imageCardCatalog = [
     season: "冬",
     cost: 0,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_____-470c98cc-e9aa-46db-8742-77fcf0210cf3.png",
+      "./レモンちゃんデッキ/みかんさん.jpg",
     summonEffect: (self, foe) => {
       const a = exileTopDeck(self);
       const b = exileTopDeck(foe);
@@ -161,7 +161,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 4,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/__________-ffff62dc-207a-4ed9-8847-f359d6a7b13e.png",
+      "./レモンちゃんデッキ/お花畑のれもんちゃん.jpg",
     attackEffect: (self) => {
       self.hp += 1;
       return "自分は1点のライフを得る";
@@ -176,7 +176,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 3,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/________-c625bf47-c2d8-46fc-9718-f3c4b6678ea7.png",
+      "./レモンちゃんデッキ/磯のれもんちゃん.jpg",
     summonEffect: (self, foe) => {
       const dealt = applyDamage(foe, 2);
       return `相手に2点ダメージ（実ダメ${dealt}）`;
@@ -191,7 +191,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 3,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/____________-2ffafd3d-fd79-4c76-a752-624c2953c951.png",
+      "./レモンちゃんデッキ/よく食べるれもんちゃん.jpg",
     attackEffect: (self) => {
       const d = drawN(self, "自分", 1);
       return `自分は山札から1枚札を引く（${d}枚）`;
@@ -206,7 +206,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 3,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/________-89e93738-d570-4375-b883-bf6e1d397958.png",
+      "./レモンちゃんデッキ/おばけはっけん.jpg",
     attackEffect: (self, foe) => {
       const removed = exileFromSoul(foe, 1, (c) => c.attribute === "場所札");
       return `相手の魂の【場所札】を${removed}枚除外`;
@@ -221,7 +221,7 @@ const imageCardCatalog = [
     cost: 6,
     power: 3,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_________-5fc1c1ab-cfcc-470c-9431-f81cfe0949cb.png",
+      "./レモンちゃんデッキ/場所のれもんちゃん.jpg",
     summonEffect: (self) => {
       self.hp += 3;
       return "自分は3点のライフを得る";
@@ -235,7 +235,7 @@ const imageCardCatalog = [
     season: "夏",
     cost: 6,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_________-fb33357c-e775-43ad-a3af-ab186dba57d9.png",
+      "./レモンちゃんデッキ/怪異のれもんちゃん.jpg",
     summonEffect: (self, foe) => {
       const dealt = applyDamage(foe, 5);
       return `相手に5点ダメージ（実ダメ${dealt}）`;
@@ -249,7 +249,7 @@ const imageCardCatalog = [
     season: "秋",
     cost: 6,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_________-4457955c-aa04-40b1-a39c-fcbb9b0e9248.png",
+      "./レモンちゃんデッキ/季節のれもんちゃん.jpg",
     // 簡易実装: 場にこのカードがある状態で「秋」の場所札を出すと2ドロー
     passive: { kind: "onSummonLocation", season: "秋", draw: 2 },
     summonEffect: () => "（継続効果）",
@@ -262,7 +262,7 @@ const imageCardCatalog = [
     season: "冬",
     cost: 6,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_________-e6f4a6f1-39d0-44ed-8b4b-a9730eb29c34.png",
+      "./レモンちゃんデッキ/道具のれもんちゃん.jpg",
     summonEffect: (self, foe) => {
       const removed = exileFromSoul(foe, 1);
       return `相手の魂を${removed}枚除外`;
@@ -277,7 +277,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 8,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_________-9879870d-fb3c-4417-a55c-fd0be3a58cc5.png",
+      "./レモンちゃんデッキ/わんちゃんかわいい.jpg",
     attackEffect: (self) => {
       self.hp += 2;
       return "自分は2点のライフを得る";
@@ -292,7 +292,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 8,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/______-925f9c91-eae4-4834-b6d3-111dfa575fa5.png",
+      "./レモンちゃんデッキ/エビ来た!.jpg",
     attackEffect: (self, foe) => {
       const dealt = applyDamage(foe, 2);
       return `相手に2点ダメージ（実ダメ${dealt}）`;
@@ -307,7 +307,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 7,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/______-9822f0e6-8643-4878-a27d-b9d72bf842f4.png",
+      "./レモンちゃんデッキ/とけいこわい.jpg",
     attackEffect: (self) => {
       const d = drawN(self, "自分", 2);
       return `自分は山札から2枚札を引く（${d}枚）`;
@@ -322,7 +322,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 7,
     imageUrl:
-      "file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/________-1bc2f8a9-ca60-41cf-a353-89cebae30014.png",
+      "./レモンちゃんデッキ/あたたかいだす.jpg",
     attackEffect: (self, foe) => {
       const removed = exileFromSoul(foe, 2);
       return `相手の魂を${removed}枚除外`;

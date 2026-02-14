@@ -14,7 +14,7 @@ body {
 
 :root {
   /* カード裏（山札と共通） */
-  --card-back-image: url("file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/_-48cbe9cf-7eb8-4e72-841f-5754000cab66.png");
+  --card-back-image: url("./レモンちゃんデッキ/裏.jpg");
   /* 手札の表示位置（上下調整） */
   --hand-fan-shift-y-player: -30px;
   /* 相手手札がロゴ付近に被らないよう下げる */
@@ -34,8 +34,7 @@ body::before {
   position: fixed;
   inset: 0;
   /* file:// で開いたときにキャッシュされやすいのでクエリで更新を効かせる */
-  background-image: url("./assets/background-1920x1080.png?v=2"),
-    url("file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/______background-20aba995-29cd-48fd-8f7a-1671e82218ae.png");
+  background-image: url("./レモンちゃんデッキ/れもんちゃんbackground.jpeg");
   /* 余白をなくすために背面は cover で埋める（後段で本体は contain） */
   background-size: cover;
   background-position: center;
@@ -51,9 +50,8 @@ body::after {
   inset: 0;
   /* 上に「全体が見える」本体画像（contain）＋暗幕 */
   background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
-    url("./assets/background-1920x1080.png?v=2"),
-    url("file:///Users/rikeoka/.cursor/projects/Users-rikeoka-Desktop/assets/______background-20aba995-29cd-48fd-8f7a-1671e82218ae.png");
-  background-size: cover, contain, contain;
+    url("./レモンちゃんデッキ/れもんちゃんbackground.jpeg");
+  background-size: cover, contain;
   background-position: center;
   background-repeat: no-repeat;
   z-index: 0;
