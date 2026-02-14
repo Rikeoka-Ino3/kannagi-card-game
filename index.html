@@ -19,7 +19,7 @@
         alt="巫カードゲーム ロゴ"
       />
     </a>
-    <main class="app">
+    <main class="app" id="app-root">
       <div class="left-panel">
         <section class="mat-stack" aria-label="盤面">
           <div class="mat-row mat-row--enemy" aria-label="相手側">
@@ -191,6 +191,15 @@
         <div class="deck-picker-note">※デッキは各カード4枚固定（計40枚）</div>
       </div>
     </div>
+
+    <!-- モバイル用：右パネルドロワーの背面 -->
+    <div id="mobile-backdrop" class="mobile-backdrop" aria-hidden="true"></div>
+    <!-- モバイル用：下部ナビ（盤面切替＆パネル） -->
+    <nav class="mobile-nav" aria-label="モバイル操作">
+      <button id="mobile-view-player" type="button" class="mobile-nav-btn">自分</button>
+      <button id="mobile-view-enemy" type="button" class="mobile-nav-btn">相手</button>
+      <button id="mobile-toggle-panel" type="button" class="mobile-nav-btn mobile-nav-btn--primary">操作</button>
+    </nav>
 
     <script src="./main.js"></script>
   </body>

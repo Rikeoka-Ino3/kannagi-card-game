@@ -682,6 +682,46 @@ const playBgm = async () => {
   }
 };
 
+// モバイルUI（盤面切替 / 右パネルドロワー）
+const initMobileUi = () => {
+  const btnPlayer = document.getElementById("mobile-view-player");
+  const btnEnemy = document.getElementById("mobile-view-enemy");
+  const btnPanel = document.getElementById("mobile-toggle-panel");
+  const backdrop = document.getElementById("mobile-backdrop");
+  if (!btnPlayer || !btnEnemy || !btnPanel) return;
+
+  const setView = (view) => {
+    document.body.classList.toggle("mobile-view-player", view === "player");
+    document.body.classList.toggle("mobile-view-enemy", view === "enemy");
+  };
+  const setPanelOpen = (open) => {
+    document.body.classList.toggle("mobile-panel-open", Boolean(open));
+    if (backdrop) backdrop.setAttribute("aria-hidden", open ? "false" : "true");
+  };
+
+  // 初期は自分盤面
+  if (!document.body.classList.contains("mobile-view-player") && !document.body.classList.contains("mobile-view-enemy")) {
+    setView("player");
+  }
+
+  btnPlayer.addEventListener("click", () => {
+    setPanelOpen(false);
+    setView("player");
+  });
+  btnEnemy.addEventListener("click", () => {
+    setPanelOpen(false);
+    setView("enemy");
+  });
+  btnPanel.addEventListener("click", () => {
+    const open = document.body.classList.contains("mobile-panel-open");
+    setPanelOpen(!open);
+  });
+  backdrop?.addEventListener("click", () => setPanelOpen(false));
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setPanelOpen(false);
+  });
+};
+
 const initBgmAutostart = () => {
   // デフォルトは「再生したい」状態（停止ボタンで止める運用）
   state.bgm.autoStart = state.bgm.autoStart ?? true;
@@ -2662,6 +2702,7 @@ initBgmUi();
 initBgmAutostart();
 initDragAndDrop();
 initDeckChoiceUi();
+initMobileUi();
 resetGame();
 setLogCollapsed(false);
 setBgmCollapsed(false);

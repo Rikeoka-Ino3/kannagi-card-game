@@ -7,12 +7,18 @@ body {
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
   background: #0f1115;
   color: #e6e6e6;
-  height: 100vh;
+  /* どの画面サイズでも「スクロール無しで全体が収まる」設計にする */
+  height: 100svh;
   overflow: hidden;
   position: relative;
 }
 
 :root {
+  /* モバイル下部ナビの高さ */
+  --mobile-nav-h: 56px;
+  /* PC表示の“密度”倍率（= ブラウザ90%相当をデフォルトに寄せる） */
+  --ui-compact: 1;
+
   /* カード裏（山札と共通） */
   --card-back-image: url("./レモンちゃんデッキ/裏.jpg");
   /* 手札の表示位置（上下調整） */
@@ -26,6 +32,18 @@ body {
   /* HPバッジ位置（プレマに被らないよう黒い余白側） */
   --hp-badge-top: 20px;
   --hp-badge-top-enemy: 380px;
+}
+
+/* PCでは少しだけ詰めて（約90%相当）100%ズームでも収まりよくする */
+@media (min-width: 1101px) {
+  :root {
+    --ui-compact: 0.9;
+    --quick-actions-lift-y: calc(114px * var(--ui-compact));
+    --hand-fan-shift-y-player: calc(-30px * var(--ui-compact));
+    --hand-fan-shift-y-enemy: calc(60px * var(--ui-compact));
+    --hp-badge-top: calc(20px * var(--ui-compact));
+    --hp-badge-top-enemy: calc(380px * var(--ui-compact));
+  }
 }
 
 /* 背景画像 + 暗幕（盤面を見やすくする） */
@@ -55,6 +73,16 @@ body::after {
   background-position: center;
   background-repeat: no-repeat;
   z-index: 0;
+}
+
+.viewport-fit {
+  /* 互換：旧スケール方式の名残（今は使わない） */
+  display: contents;
+}
+
+.app-shell {
+  /* 互換：旧スケール方式の名残（今は使わない） */
+  display: contents;
 }
 
 .result-overlay {
@@ -286,7 +314,7 @@ body::after {
   position: fixed;
   top: 12px;
   left: 12px;
-  width: 120px;
+  width: calc(120px * var(--ui-compact));
   height: auto;
   z-index: 10;
 }
@@ -296,9 +324,9 @@ body::after {
   margin: 0 auto;
   padding: 6px 10px 8px;
   display: grid;
-  grid-template-columns: minmax(960px, 1fr) 260px;
-  gap: 10px;
-  height: 100vh;
+  grid-template-columns: minmax(960px, 1fr) calc(280px * var(--ui-compact));
+  gap: calc(10px * var(--ui-compact));
+  height: 100svh;
 }
 
 .left-panel {
@@ -317,6 +345,115 @@ body::after {
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+/* -----------------------------
+   モバイル対応（段階レイアウト）
+------------------------------ */
+.mobile-nav,
+.mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  /* 1カラム：盤面を最優先 */
+  .app {
+    grid-template-columns: 1fr;
+    height: 100svh;
+    max-width: none;
+    padding-bottom: calc(8px + var(--mobile-nav-h));
+  }
+
+  .right-panel {
+    /* 右パネルはドロワー化（初期は隠す） */
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    bottom: calc(8px + var(--mobile-nav-h));
+    width: min(360px, calc(100vw - 16px));
+    z-index: 120;
+    background: rgba(15, 19, 32, 0.92);
+    border: 1px solid rgba(230, 230, 230, 0.14);
+    border-radius: 14px;
+    padding: 10px;
+    overflow: auto;
+    transform: translateX(110%);
+    transition: transform 180ms ease;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+  }
+
+  body.mobile-panel-open .right-panel {
+    transform: translateX(0);
+  }
+
+  .mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+  body.mobile-panel-open .mobile-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 下部ナビ */
+  .mobile-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 10px;
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    height: var(--mobile-nav-h);
+    z-index: 130;
+  }
+  .mobile-nav-btn {
+    height: 100%;
+    border-radius: 14px;
+    border: 1px solid rgba(230, 230, 230, 0.18);
+    background: rgba(21, 25, 36, 0.88);
+    color: #eef2ff;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    font-size: 13px;
+  }
+  .mobile-nav-btn--primary {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(0, 0, 0, 0.12)),
+      rgba(107, 124, 255, 0.85);
+    color: #0f1115;
+    border-color: rgba(107, 124, 255, 0.55);
+  }
+  body.mobile-view-player #mobile-view-player,
+  body.mobile-view-enemy #mobile-view-enemy {
+    outline: 2px solid rgba(244, 195, 111, 0.75);
+    outline-offset: -2px;
+  }
+
+  /* 盤面切替（スマホは1枚だけ表示） */
+  body.mobile-view-player .mat-row--enemy {
+    display: none;
+  }
+  body.mobile-view-enemy .mat-row--player {
+    display: none;
+  }
+
+  /* 手札がはみ出すのを防ぐ（場サイズは維持） */
+  .hand-fan--player .card,
+  .hand-fan--player .card-back {
+    width: clamp(96px, 18vw, 150px);
+    height: calc(clamp(96px, 18vw, 150px) * 1.4667);
+  }
+  .hand-fan {
+    height: clamp(170px, 28vh, 260px);
+  }
 }
 
 .header {
@@ -385,7 +522,7 @@ body::after {
   min-height: 0;
   display: grid;
   grid-template-rows: 1fr 1fr;
-  gap: 10px;
+  gap: calc(10px * var(--ui-compact));
   align-content: stretch;
 }
 
@@ -394,7 +531,7 @@ body::after {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: calc(10px * var(--ui-compact));
 }
 
 .side-area {
@@ -402,10 +539,10 @@ body::after {
   height: 100%;
   display: grid;
   grid-template-rows: 1fr auto;
-  gap: 6px;
+  gap: calc(6px * var(--ui-compact));
   align-content: start;
   justify-items: stretch;
-  padding: 6px 2px;
+  padding: calc(6px * var(--ui-compact)) calc(2px * var(--ui-compact));
 }
 
 /* 自分側は「クイック操作 → 手札」を下側に寄せる */
@@ -550,8 +687,8 @@ body::after {
 }
 
 .hp-badge {
-  width: 72px;
-  height: 72px;
+  width: calc(72px * var(--ui-compact));
+  height: calc(72px * var(--ui-compact));
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -588,7 +725,7 @@ body::after {
 /* 手札：実際に手に持ってる風（扇状） */
 .hand-fan {
   min-height: 0;
-  height: 260px;
+  height: calc(260px * var(--ui-compact));
   width: 100%;
   position: relative;
   overflow: visible;
@@ -648,14 +785,14 @@ body::after {
 
 .hand-fan--player .card,
 .hand-fan--player .card-back {
-  width: 150px;
-  height: 220px;
+  width: calc(150px * var(--ui-compact));
+  height: calc(220px * var(--ui-compact));
 }
 
 .hand-fan--enemy .card,
 .hand-fan--enemy .card-back {
-  width: 120px;
-  height: 175px;
+  width: calc(120px * var(--ui-compact));
+  height: calc(175px * var(--ui-compact));
 }
 
 .hand-fan .card {
