@@ -24,7 +24,7 @@ body {
   --quick-actions-lift-y: 114px;
 
   /* HPバッジ位置（プレマに被らないよう黒い余白側） */
-  --hp-badge-top: 18px;
+  --hp-badge-top: 20px;
   --hp-badge-top-enemy: 380px;
 }
 
