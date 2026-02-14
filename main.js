@@ -11,7 +11,7 @@ const applyDamage = (target, amount) => {
 };
 
 const lemonImageUrl =
-  "./レモンちゃんデッキ/春のれもんちゃん.jpg";
+  "./レモンちゃんデッキ/春のれもんちゃん.jpg";
 
 // デフォルトのプレマシート（ユーザーが未設定のときだけ使われる）
 const defaultPlaymatUrl =
@@ -65,7 +65,7 @@ const imageCardCatalog = [
     cost: 0,
     power: 1,
     imageUrl:
-      "./レモンちゃんデッキ/夏のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/夏のれもんちゃん.jpg",
     summonEffect: () => "（効果なし）",
   },
   {
@@ -77,7 +77,7 @@ const imageCardCatalog = [
     cost: 0,
     power: 1,
     imageUrl:
-      "./レモンちゃんデッキ/秋のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/秋のれもんちゃん.jpg",
     summonEffect: () => "（効果なし）",
   },
   {
@@ -89,7 +89,7 @@ const imageCardCatalog = [
     cost: 0,
     power: 1,
     imageUrl:
-      "./レモンちゃんデッキ/冬のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/冬のれもんちゃん.jpg",
     summonEffect: () => "（効果なし）",
   },
   {
@@ -100,7 +100,7 @@ const imageCardCatalog = [
     season: "春",
     cost: 0,
     imageUrl:
-      "./レモンちゃんデッキ/いちごちゃん.jpg",
+      "./レモンちゃんデッキ/いちごちゃん.jpg",
     summonEffect: (self, foe) => {
       self.hp += 2;
       foe.hp += 2;
@@ -115,7 +115,7 @@ const imageCardCatalog = [
     season: "夏",
     cost: 0,
     imageUrl:
-      "./レモンちゃんデッキ/すいかちゃん.jpg",
+      "./レモンちゃんデッキ/すいかちゃん.jpg",
     summonEffect: (self, foe) => {
       const a = applyDamage(self, 2);
       const b = applyDamage(foe, 2);
@@ -130,7 +130,7 @@ const imageCardCatalog = [
     season: "秋",
     cost: 0,
     imageUrl:
-      "./レモンちゃんデッキ/かきちゃん.jpg",
+      "./レモンちゃんデッキ/かきちゃん.jpg",
     summonEffect: (self, foe) => {
       const a = drawN(self, "自分", 1);
       const b = drawN(foe, "相手", 1);
@@ -145,7 +145,7 @@ const imageCardCatalog = [
     season: "冬",
     cost: 0,
     imageUrl:
-      "./レモンちゃんデッキ/みかんさん.jpg",
+      "./レモンちゃんデッキ/みかんさん.jpg",
     summonEffect: (self, foe) => {
       const a = exileTopDeck(self);
       const b = exileTopDeck(foe);
@@ -161,7 +161,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 4,
     imageUrl:
-      "./レモンちゃんデッキ/お花畑のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/お花畑のれもんちゃん.jpg",
     attackEffect: (self) => {
       self.hp += 1;
       return "自分は1点のライフを得る";
@@ -176,7 +176,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 3,
     imageUrl:
-      "./レモンちゃんデッキ/磯のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/磯のれもんちゃん.jpg",
     summonEffect: (self, foe) => {
       const dealt = applyDamage(foe, 2);
       return `相手に2点ダメージ（実ダメ${dealt}）`;
@@ -191,7 +191,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 3,
     imageUrl:
-      "./レモンちゃんデッキ/よく食べるれもんちゃん.jpg",
+      "./レモンちゃんデッキ/よく食べるれもんちゃん.jpg",
     attackEffect: (self) => {
       const d = drawN(self, "自分", 1);
       return `自分は山札から1枚札を引く（${d}枚）`;
@@ -206,7 +206,7 @@ const imageCardCatalog = [
     cost: 4,
     power: 3,
     imageUrl:
-      "./レモンちゃんデッキ/おばけはっけん.jpg",
+      "./レモンちゃんデッキ/おばけはっけん.jpg",
     attackEffect: (self, foe) => {
       const removed = exileFromSoul(foe, 1, (c) => c.attribute === "場所札");
       return `相手の魂の【場所札】を${removed}枚除外`;
@@ -221,7 +221,7 @@ const imageCardCatalog = [
     cost: 6,
     power: 3,
     imageUrl:
-      "./レモンちゃんデッキ/場所のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/場所のれもんちゃん.jpg",
     summonEffect: (self) => {
       self.hp += 3;
       return "自分は3点のライフを得る";
@@ -235,7 +235,7 @@ const imageCardCatalog = [
     season: "夏",
     cost: 6,
     imageUrl:
-      "./レモンちゃんデッキ/怪異のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/怪異のれもんちゃん.jpg",
     summonEffect: (self, foe) => {
       const dealt = applyDamage(foe, 5);
       return `相手に5点ダメージ（実ダメ${dealt}）`;
@@ -249,7 +249,7 @@ const imageCardCatalog = [
     season: "秋",
     cost: 6,
     imageUrl:
-      "./レモンちゃんデッキ/季節のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/季節のれもんちゃん.jpg",
     // 簡易実装: 場にこのカードがある状態で「秋」の場所札を出すと2ドロー
     passive: { kind: "onSummonLocation", season: "秋", draw: 2 },
     summonEffect: () => "（継続効果）",
@@ -262,7 +262,7 @@ const imageCardCatalog = [
     season: "冬",
     cost: 6,
     imageUrl:
-      "./レモンちゃんデッキ/道具のれもんちゃん.jpg",
+      "./レモンちゃんデッキ/道具のれもんちゃん.jpg",
     summonEffect: (self, foe) => {
       const removed = exileFromSoul(foe, 1);
       return `相手の魂を${removed}枚除外`;
@@ -277,7 +277,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 8,
     imageUrl:
-      "./レモンちゃんデッキ/わんちゃんかわいい.jpg",
+      "./レモンちゃんデッキ/わんちゃんかわいい.jpg",
     attackEffect: (self) => {
       self.hp += 2;
       return "自分は2点のライフを得る";
@@ -292,7 +292,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 8,
     imageUrl:
-      "./レモンちゃんデッキ/エビ来た!.jpg",
+      "./レモンちゃんデッキ/エビ来た!.jpg",
     attackEffect: (self, foe) => {
       const dealt = applyDamage(foe, 2);
       return `相手に2点ダメージ（実ダメ${dealt}）`;
@@ -307,7 +307,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 7,
     imageUrl:
-      "./レモンちゃんデッキ/とけいこわい.jpg",
+      "./レモンちゃんデッキ/とけいこわい.jpg",
     attackEffect: (self) => {
       const d = drawN(self, "自分", 2);
       return `自分は山札から2枚札を引く（${d}枚）`;
@@ -322,7 +322,7 @@ const imageCardCatalog = [
     cost: 8,
     power: 7,
     imageUrl:
-      "./レモンちゃんデッキ/あたたかいだす.jpg",
+      "./レモンちゃんデッキ/あたたかいだす.jpg",
     attackEffect: (self, foe) => {
       const removed = exileFromSoul(foe, 2);
       return `相手の魂を${removed}枚除外`;
