@@ -14,8 +14,11 @@ const lemonImageUrl =
   "./レモンちゃんデッキ/春のれもんちゃん.jpg";
 
 // デフォルトのプレマシート（ユーザーが未設定のときだけ使われる）
-const defaultPlaymatUrl =
-  "./プレマ.avif";
+// GitHub Pages 上ではファイル名の Unicode 正規化（例: プレマ / プレマ）や AVIF の配信都合で
+// 読み込めないケースがあるため、複数候補＋フォールバックを用意する。
+// まずは Pages で確実に表示できる PNG を優先する。
+const defaultPlaymatUrls = ["./assets/playmat.png", "./プレマ.avif", "./プレマ.avif"];
+const defaultPlaymatFallbackUrl = "./レモンちゃんデッキ/れもんちゃんbackground.jpeg";
 
 const seasons = ["春", "夏", "秋", "冬", "無"];
 
@@ -416,9 +419,11 @@ const state = {
   startingPlayer: "player",
   hasDrawn: false,
   playmat: {
-    url: defaultPlaymatUrl,
+    url: defaultPlaymatUrls[0],
     opacity: 1,
     fit: "contain",
+    _resolveKey: "",
+    _resolvedUrl: "",
   },
 };
 
@@ -565,15 +570,63 @@ const bgmAudio = new Audio();
 bgmAudio.loop = true;
 bgmAudio.preload = "auto";
 
+const resolveFirstLoadableImageUrl = (urls, done) => {
+  const list = (Array.isArray(urls) ? urls : []).filter((u) => typeof u === "string" && u.trim() !== "");
+  if (list.length === 0) {
+    done("");
+    return;
+  }
+  const tryAt = (idx) => {
+    const u = list[idx];
+    const img = new Image();
+    img.onload = () => done(u);
+    img.onerror = () => {
+      if (idx + 1 < list.length) tryAt(idx + 1);
+      else done("");
+    };
+    img.src = encodeURI(u);
+  };
+  tryAt(0);
+};
+
 const applyPlaymatSettings = () => {
   const layers = [elements.playerPlaymatLayer, elements.enemyPlaymatLayer].filter(Boolean);
   if (layers.length === 0) return;
-  const url = state.playmat.url?.trim?.() ?? "";
+  const raw = state.playmat.url?.trim?.() ?? "";
+  const key = raw || "__default__";
+  const opacity = String(state.playmat.opacity ?? 1);
+  const size = state.playmat.fit ?? "contain";
+
+  // 透過・サイズは即反映
   for (const layer of layers) {
-    layer.style.backgroundImage = url ? `url("${url}")` : "none";
-    layer.style.opacity = String(state.playmat.opacity ?? 1);
-    layer.style.backgroundSize = state.playmat.fit ?? "contain";
+    layer.style.opacity = opacity;
+    layer.style.backgroundSize = size;
   }
+
+  const apply = (u) => {
+    const finalUrl = (u ?? "").trim();
+    for (const layer of layers) {
+      layer.style.backgroundImage = finalUrl ? `url("${encodeURI(finalUrl)}")` : "none";
+    }
+  };
+
+  // 既に解決済みなら即適用
+  if (state.playmat._resolveKey === key && state.playmat._resolvedUrl) {
+    apply(state.playmat._resolvedUrl);
+    return;
+  }
+
+  state.playmat._resolveKey = key;
+  state.playmat._resolvedUrl = "";
+
+  const candidates = raw ? [raw] : defaultPlaymatUrls;
+  resolveFirstLoadableImageUrl(candidates, (ok) => {
+    // 解決中に別URLに変わっていたら破棄
+    if (state.playmat._resolveKey !== key) return;
+    const resolved = ok || defaultPlaymatFallbackUrl || "";
+    state.playmat._resolvedUrl = resolved;
+    apply(resolved);
+  });
 };
 
 const updateBgmUi = () => {
