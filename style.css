@@ -370,15 +370,20 @@ body::after {
     height: calc(100svh - var(--mobile-nav-h) - 18px - env(safe-area-inset-bottom, 0px));
   }
 
-  /* 盤面は「プレマ → クイック操作 → 手札」が1画面で見えるよう縦積み */
+  /* 盤面は「プレマ（上）→ 攻撃/ターン終了 → 手札 → 下部ナビ」が1画面に入るように */
   .mat-row {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-    justify-content: flex-start;
     height: 100%;
     min-height: 0;
+  }
+
+  .mat-row--player,
+  .mat-row--enemy {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: start;
+    justify-items: stretch;
   }
 
   /* 初期表示は「自分盤面」。JSが動かない環境でも崩れないようにする */
@@ -386,7 +391,7 @@ body::after {
     display: none;
   }
   body.mobile-view-enemy .mat-row--enemy {
-    display: flex;
+    display: grid;
   }
   body.mobile-view-enemy .mat-row--player {
     display: none;
@@ -395,6 +400,9 @@ body::after {
   /* 相手側は「プレマだけ」見せたいので、手札欄は隠す */
   .mat-row--enemy .side-area--enemy {
     display: none;
+  }
+  .mat-row--enemy {
+    grid-template-rows: minmax(0, 1fr);
   }
 
   /* HPは盤面に重ねて省スペース */
@@ -421,10 +429,12 @@ body::after {
 
   /* モバイルではmatの高さを固定せず、幅に合わせて比率で表示（プレマが見えない/切れるのを防ぐ） */
   .mat {
-    width: min(100%, 980px);
-    /* 盤面領域に収める（手札/ボタンの分を残す） */
-    max-height: calc(100svh - var(--mobile-nav-h) - 220px - env(safe-area-inset-bottom, 0px));
+    width: 100%;
+    max-width: 100%;
+    /* iPhone縦で「盤面が手札に押されて消える」事故を防ぐ */
+    max-height: 52svh;
     height: auto;
+    justify-self: stretch;
   }
 
   /* 手札エリア（自分）は下固定っぽく */
@@ -444,6 +454,11 @@ body::after {
   .side-area {
     width: 100%;
     height: auto;
+  }
+
+  /* プレマをスマホでも見やすく（背景に埋もれない） */
+  .playmat-layer {
+    opacity: 0.55;
   }
 
   .right-panel {
@@ -535,6 +550,8 @@ body::after {
   }
   .hand-fan {
     height: clamp(150px, 24vh, 220px);
+    /* 盤面にカードが被ってしまうのを防ぐ */
+    overflow: hidden;
   }
 
   /* クイック操作はモバイルでは持ち上げない（画面内に収める） */
