@@ -361,7 +361,67 @@ body::after {
     grid-template-columns: 1fr;
     height: 100svh;
     max-width: none;
-    padding-bottom: calc(8px + var(--mobile-nav-h));
+    padding-bottom: calc(8px + var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 2枚並びのグリッドをやめて、表示中の1枚が高さを全部使う */
+  .mat-stack {
+    display: block;
+    height: 100%;
+  }
+
+  /* 3カラム構造を縦積みに */
+  .mat-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 10px;
+    justify-items: center;
+    align-items: start;
+  }
+
+  /* 相手側（手札 → 盤面 → HP） */
+  .mat-row--enemy {
+    grid-template-areas:
+      "hand"
+      "mat"
+      "hp";
+  }
+  .mat-row--enemy .side-area--enemy {
+    grid-area: hand;
+  }
+  .mat-row--enemy .mat--enemy {
+    grid-area: mat;
+  }
+  .mat-row--enemy .side-area--enemy-hp {
+    grid-area: hp;
+  }
+
+  /* 自分側（HP → 盤面 → 手札） */
+  .mat-row--player {
+    grid-template-areas:
+      "hp"
+      "mat"
+      "hand";
+  }
+  .mat-row--player .side-area--player-hp {
+    grid-area: hp;
+  }
+  .mat-row--player .mat--player {
+    grid-area: mat;
+  }
+  .mat-row--player .side-area--player {
+    grid-area: hand;
+  }
+
+  /* モバイルではmatの高さを固定せず、幅に合わせて比率で表示（プレマが見えない/切れるのを防ぐ） */
+  .mat {
+    width: min(100%, 980px);
+    height: auto;
+  }
+
+  .side-area {
+    width: 100%;
+    height: auto;
   }
 
   .right-panel {
@@ -369,7 +429,7 @@ body::after {
     position: fixed;
     top: 8px;
     right: 8px;
-    bottom: calc(8px + var(--mobile-nav-h));
+    bottom: calc(8px + var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px));
     width: min(360px, calc(100vw - 16px));
     z-index: 120;
     background: rgba(15, 19, 32, 0.92);
@@ -410,7 +470,7 @@ body::after {
     position: fixed;
     left: 10px;
     right: 10px;
-    bottom: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     height: var(--mobile-nav-h);
     z-index: 130;
   }
@@ -453,6 +513,31 @@ body::after {
   }
   .hand-fan {
     height: clamp(170px, 28vh, 260px);
+  }
+
+  /* クイック操作はモバイルでは持ち上げない（画面内に収める） */
+  .side-area--player {
+    grid-template-rows: auto auto;
+  }
+  .side-area--player .quick-actions {
+    transform: none;
+    align-self: start;
+  }
+}
+
+/* iPhone 14 (390px) 付近の詰め（1画面に収めやすく） */
+@media (max-width: 430px) {
+  .hand-fan--player .card,
+  .hand-fan--player .card-back {
+    width: clamp(86px, 22vw, 130px);
+    height: calc(clamp(86px, 22vw, 130px) * 1.4667);
+  }
+  .hand-fan {
+    height: clamp(150px, 26vh, 220px);
+  }
+  .quick-actions-btn {
+    padding: 10px 14px;
+    font-size: 12px;
   }
 }
 
