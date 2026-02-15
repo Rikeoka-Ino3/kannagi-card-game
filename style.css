@@ -367,55 +367,77 @@ body::after {
   /* 2枚並びのグリッドをやめて、表示中の1枚が高さを全部使う */
   .mat-stack {
     display: block;
-    height: 100%;
+    height: calc(100svh - var(--mobile-nav-h) - 18px - env(safe-area-inset-bottom, 0px));
   }
 
-  /* 3カラム構造を縦積みに */
+  /* 盤面は「プレマ → クイック操作 → 手札」が1画面で見えるよう縦積み */
   .mat-row {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
-    justify-items: center;
-    align-items: start;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    min-height: 0;
   }
 
-  /* 相手側（手札 → 盤面 → HP） */
+  /* 初期表示は「自分盤面」。JSが動かない環境でも崩れないようにする */
   .mat-row--enemy {
-    grid-template-areas:
-      "hand"
-      "mat"
-      "hp";
+    display: none;
   }
-  .mat-row--enemy .side-area--enemy {
-    grid-area: hand;
+  body.mobile-view-enemy .mat-row--enemy {
+    display: flex;
   }
-  .mat-row--enemy .mat--enemy {
-    grid-area: mat;
-  }
-  .mat-row--enemy .side-area--enemy-hp {
-    grid-area: hp;
+  body.mobile-view-enemy .mat-row--player {
+    display: none;
   }
 
-  /* 自分側（HP → 盤面 → 手札） */
+  /* 相手側は「プレマだけ」見せたいので、手札欄は隠す */
+  .mat-row--enemy .side-area--enemy {
+    display: none;
+  }
+
+  /* HPは盤面に重ねて省スペース */
+  .side-area--player-hp,
+  .side-area--enemy-hp {
+    position: absolute;
+    left: 10px;
+    top: 70px;
+    z-index: 20;
+    height: auto;
+    padding: 0;
+    pointer-events: none;
+  }
+  .side-area--player-hp .hp-badge,
+  .side-area--enemy-hp .hp-badge {
+    pointer-events: auto;
+  }
+  .mat-row--enemy {
+    position: relative;
+  }
   .mat-row--player {
-    grid-template-areas:
-      "hp"
-      "mat"
-      "hand";
-  }
-  .mat-row--player .side-area--player-hp {
-    grid-area: hp;
-  }
-  .mat-row--player .mat--player {
-    grid-area: mat;
-  }
-  .mat-row--player .side-area--player {
-    grid-area: hand;
+    position: relative;
   }
 
   /* モバイルではmatの高さを固定せず、幅に合わせて比率で表示（プレマが見えない/切れるのを防ぐ） */
   .mat {
     width: min(100%, 980px);
+    /* 盤面領域に収める（手札/ボタンの分を残す） */
+    max-height: calc(100svh - var(--mobile-nav-h) - 220px - env(safe-area-inset-bottom, 0px));
+    height: auto;
+  }
+
+  /* 手札エリア（自分）は下固定っぽく */
+  .side-area--player {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: auto;
+    padding: 0 2px;
+  }
+  .side-area--enemy {
+    width: 100%;
     height: auto;
   }
 
@@ -512,16 +534,13 @@ body::after {
     height: calc(clamp(96px, 18vw, 150px) * 1.4667);
   }
   .hand-fan {
-    height: clamp(170px, 28vh, 260px);
+    height: clamp(150px, 24vh, 220px);
   }
 
   /* クイック操作はモバイルでは持ち上げない（画面内に収める） */
-  .side-area--player {
-    grid-template-rows: auto auto;
-  }
   .side-area--player .quick-actions {
     transform: none;
-    align-self: start;
+    align-self: center;
   }
 }
 
