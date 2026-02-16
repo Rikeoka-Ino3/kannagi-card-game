@@ -96,6 +96,14 @@
               <div class="quick-actions" aria-label="クイック操作">
                 <button id="quick-attack-btn" type="button" class="quick-actions-btn">攻撃</button>
                 <button id="quick-end-btn" type="button" class="quick-actions-btn">ターン終了</button>
+                <button id="quick-summon-field-btn" type="button" class="quick-actions-btn" hidden>場へ</button>
+                <button id="quick-summon-top-btn" type="button" class="quick-actions-btn" hidden>季節上</button>
+                <button id="quick-deploy-season-btn" type="button" class="quick-actions-btn" hidden>展開</button>
+                <button id="quick-use-tool-btn" type="button" class="quick-actions-btn" hidden>発動</button>
+                <button id="quick-returnhand-btn" type="button" class="quick-actions-btn" hidden>戻す</button>
+                <button id="quick-possess-btn" type="button" class="quick-actions-btn" hidden>憑依</button>
+                <button id="quick-cancel-btn" type="button" class="quick-actions-btn" hidden>キャンセル</button>
+                <button id="quick-undo-btn" type="button" class="quick-actions-btn">UNDO</button>
               </div>
               <div id="hand-area" class="hand-fan hand-fan--player"></div>
             </div>
@@ -106,8 +114,8 @@
       <div class="right-panel">
         <section class="controls">
           <button id="reset-btn">開始 / リセット</button>
-          <button id="mulligan-btn">0探し</button>
-          <button id="mulligan-confirm-btn">0探し確定</button>
+          <button id="mulligan-btn">零探し選択クリア</button>
+          <button id="mulligan-confirm-btn">零探し確定</button>
           <button id="attack-btn">攻撃</button>
           <button id="end-btn">ターン終了</button>
         </section>
@@ -189,6 +197,30 @@
           </button>
         </div>
         <div class="deck-picker-note">※デッキは各カード4枚固定（計40枚）</div>
+      </div>
+    </div>
+
+    <div id="mulligan-overlay" class="mulligan-overlay" aria-hidden="true">
+      <div class="mulligan-card" role="dialog" aria-modal="true" aria-label="零探し">
+        <div class="mulligan-header">
+          <div class="mulligan-title">零探し</div>
+          <div class="mulligan-subtitle">入れ替える札を選び、「零探し完了」を押してください</div>
+        </div>
+        <div id="mulligan-hand" class="mulligan-hand" aria-label="零探し手札"></div>
+        <div class="mulligan-actions">
+          <button id="mulligan-complete-btn" type="button" class="mulligan-complete-btn">零探し完了</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirm-overlay" class="confirm-overlay" aria-hidden="true">
+      <div class="confirm-card" role="dialog" aria-modal="true" aria-label="確認">
+        <div class="confirm-title">確認</div>
+        <div id="confirm-message" class="confirm-message"></div>
+        <div class="confirm-actions">
+          <button id="confirm-cancel" type="button" class="confirm-btn confirm-btn--ghost">キャンセル</button>
+          <button id="confirm-ok" type="button" class="confirm-btn confirm-btn--danger">OK</button>
+        </div>
       </div>
     </div>
 

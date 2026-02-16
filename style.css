@@ -22,12 +22,16 @@ body {
   /* カード裏（山札と共通） */
   --card-back-image: url("./assets/ui/card_back.jpg");
   /* 手札の表示位置（上下調整） */
+  --hand-fan-shift-x: 0px;
   --hand-fan-shift-y-player: -30px;
   /* 相手手札がロゴ付近に被らないよう下げる */
   --hand-fan-shift-y-enemy: 60px;
 
   /* クイック操作（攻撃/ターン終了）を手札から離す量（約3cm目安） */
   --quick-actions-lift-y: 114px;
+
+  /* 盤面（ライフ/プレマ/山札/手札）全体の左右位置調整 */
+  --left-panel-shift-x: 0px;
 
   /* HPバッジ位置（プレマに被らないよう黒い余白側） */
   --hp-badge-top: 20px;
@@ -38,11 +42,13 @@ body {
 @media (min-width: 1101px) {
   :root {
     --ui-compact: 0.9;
+    --hand-fan-shift-x: 35px;
     --quick-actions-lift-y: calc(114px * var(--ui-compact));
     --hand-fan-shift-y-player: calc(-30px * var(--ui-compact));
     --hand-fan-shift-y-enemy: calc(60px * var(--ui-compact));
     --hp-badge-top: calc(20px * var(--ui-compact));
     --hp-badge-top-enemy: calc(380px * var(--ui-compact));
+    --left-panel-shift-x: -68px;
   }
 }
 
@@ -305,6 +311,111 @@ body::after {
   color: rgba(26, 12, 12, 0.65);
 }
 
+.mulligan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: none;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(122, 145, 255, 0.20), rgba(0, 0, 0, 0.78) 58%),
+    rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.mulligan-overlay.mulligan-overlay--show {
+  display: grid;
+  animation: resultFadeIn 240ms ease-out both;
+}
+
+.mulligan-card {
+  width: min(1060px, calc(100vw - 40px));
+  border-radius: 24px;
+  padding: 18px 18px 16px;
+  border: 1px solid rgba(230, 230, 230, 0.24);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.24)),
+    rgba(13, 16, 24, 0.82);
+}
+
+.mulligan-header {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.mulligan-title {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #f2f4ff;
+  text-shadow: 0 12px 32px rgba(0, 0, 0, 0.52);
+}
+
+.mulligan-subtitle {
+  font-size: 13px;
+  color: rgba(242, 244, 255, 0.85);
+}
+
+.mulligan-hand {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mulligan-hand-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 80 / 110;
+  border-radius: 18px;
+  border: 1px solid rgba(230, 230, 230, 0.25);
+  background: rgba(15, 17, 21, 0.48);
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.mulligan-hand-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(122, 145, 255, 0.65);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.38);
+}
+
+.mulligan-hand-card--selected {
+  border-color: rgba(244, 195, 111, 0.95);
+  box-shadow: 0 0 0 2px rgba(244, 195, 111, 0.62), 0 16px 34px rgba(0, 0, 0, 0.42);
+  transform: translateY(-2px);
+}
+
+.mulligan-actions {
+  margin-top: 14px;
+  display: grid;
+  place-items: center;
+}
+
+.mulligan-complete-btn {
+  min-width: 260px;
+  padding: 13px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(230, 230, 230, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(0, 0, 0, 0.20)),
+    rgba(30, 39, 66, 0.86);
+  color: #f2f4ff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+}
+
+.mulligan-complete-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(244, 195, 111, 0.62);
+}
+
 .app {
   position: relative;
   z-index: 1;
@@ -335,6 +446,12 @@ body::after {
   gap: 6px;
   min-width: 0;
   height: 100%;
+}
+
+@media (min-width: 901px) {
+  .left-panel {
+    transform: translateX(var(--left-panel-shift-x));
+  }
 }
 
 .right-panel {
@@ -556,7 +673,14 @@ body::after {
 
   /* クイック操作はモバイルでは持ち上げない（画面内に収める） */
   .side-area--player .quick-actions {
-    transform: none;
+    position: static;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 8px;
+    border-radius: 14px;
+    z-index: auto;
     align-self: center;
   }
 }
@@ -655,6 +779,26 @@ body::after {
   gap: calc(10px * var(--ui-compact));
 }
 
+/* デスクトップ: 相手手札は右側、相手ライフは左側へ */
+@media (min-width: 901px) {
+  .mat-row--enemy .side-area--enemy {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .mat-row--enemy .mat {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .mat-row--enemy .side-area--enemy-hp {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: stretch;
+  }
+  .mat-row--enemy .hp-badge--enemy {
+    justify-self: end;
+  }
+}
+
 .side-area {
   min-height: 0;
   height: 100%;
@@ -668,17 +812,15 @@ body::after {
 
 /* 自分側は「クイック操作 → 手札」を下側に寄せる */
 .side-area--player {
-  grid-template-rows: 1fr auto auto;
+  grid-template-rows: 1fr auto;
+  position: relative;
 }
 .side-area--player .quick-actions {
-  grid-row: 2;
-  align-self: end;
-  /* 手札の位置調整とは独立して、ボタンを上へ（手札から約3cm） */
-  transform: translateY(calc(-1 * var(--quick-actions-lift-y)));
-  will-change: transform;
+  /* 手札エリア基準で表示（常に手札の上） */
+  grid-row: 1;
 }
 .side-area--player #hand-area {
-  grid-row: 3;
+  grid-row: 2;
 }
 
 .season-slot {
@@ -731,7 +873,7 @@ body::after {
 }
 
 /* 上の場所札は重ね表示（右下に小さく） */
-.season-slot--on-field .season-top-card {
+.season-slot--on-field .season-top-slot {
   position: absolute;
   /* 場ゾーンに食い込ませない（ドロップ/クリックが場に吸われるのを防ぐ） */
   right: 0;
@@ -746,10 +888,14 @@ body::after {
   background: transparent;
   pointer-events: auto;
 }
-.season-slot--on-field .season-top-card .field-card {
+.season-slot--on-field .season-top-slot .season-top-card {
+  width: 100%;
+  height: 100%;
+}
+.season-slot--on-field .season-top-slot .season-top-card .field-card-face {
   border-radius: 16px;
 }
-.season-slot--on-field .season-top-card--empty {
+.season-slot--on-field .season-top-slot--empty {
   border-radius: 16px;
   /* buttonのデフォルト装飾を完全に無効化（当たり判定だけ残す） */
   appearance: none;
@@ -780,22 +926,8 @@ body::after {
 }
 
 .season-top-card {
-  width: 120px;
-  height: 175px;
   display: grid;
   place-items: center;
-}
-
-.season-top-card .field-card {
-  width: 100%;
-  height: 100%;
-  border-radius: 22px;
-}
-
-.season-top-card--empty {
-  border: 1px dashed rgba(230, 230, 230, 0.25);
-  border-radius: 22px;
-  background: rgba(15, 17, 21, 0.12);
 }
 
 .side-area--player-hp,
@@ -853,11 +985,11 @@ body::after {
 }
 
 .hand-fan--player {
-  transform: translateY(var(--hand-fan-shift-y-player, 0px));
+  transform: translateX(var(--hand-fan-shift-x, 0px)) translateY(var(--hand-fan-shift-y-player, 0px));
 }
 
 .hand-fan--enemy {
-  transform: translateY(var(--hand-fan-shift-y-enemy, 0px));
+  transform: translateX(var(--hand-fan-shift-x, 0px)) translateY(var(--hand-fan-shift-y-enemy, 0px));
 }
 
 .hand-fan--player {
@@ -1006,51 +1138,86 @@ body::after {
 
 /* 手札付近のクイック操作（攻撃/ターン終了） */
 .quick-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: clamp(12px, 1.2vw, 18px);
-  flex-wrap: wrap;
-  z-index: 30;
+  position: absolute;
+  right: 0;
+  bottom: calc((260px * var(--ui-compact)) + 48px);
+  width: clamp(220px, 18vw, 280px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 0.9vw, 12px);
+  z-index: 60;
   pointer-events: auto;
-  padding: 0;
+  padding: clamp(8px, 0.8vw, 12px);
+  border-radius: 18px;
+  border: 1px solid rgba(208, 168, 92, 0.55);
+  background:
+    radial-gradient(circle at 16% 20%, rgba(246, 229, 190, 0.22), rgba(246, 229, 190, 0) 44%),
+    radial-gradient(circle at 82% 78%, rgba(159, 113, 52, 0.26), rgba(159, 113, 52, 0) 52%),
+    repeating-linear-gradient(0deg, rgba(255, 241, 214, 0.07) 0 2px, rgba(255, 241, 214, 0) 2px 6px),
+    linear-gradient(180deg, rgba(48, 35, 20, 0.84), rgba(18, 14, 10, 0.86));
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(255, 237, 202, 0.12);
+  backdrop-filter: blur(9px);
 }
 
 .quick-actions-btn {
-  /* 体感「上下左右 +0.5cm」くらい大きく */
-  padding: calc(6px + 0.5cm) calc(12px + 0.5cm);
+  min-height: clamp(42px, 4.2vh, 50px);
+  padding: 10px 12px;
   line-height: 1.1;
-  font-size: clamp(11px, 1.2vw, 13px);
+  font-size: clamp(11px, 0.95vw, 13px);
   font-weight: 900;
-  letter-spacing: 0.06em;
-  border-radius: 14px;
+  letter-spacing: 0.08em;
+  border-radius: 12px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(0, 0, 0, 0.18)),
-    rgba(21, 25, 36, 0.88);
-  color: #eef2ff;
-  border: 1px solid rgba(230, 230, 230, 0.18);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.40);
-  backdrop-filter: blur(8px);
+    linear-gradient(180deg, rgba(255, 244, 222, 0.34), rgba(86, 58, 25, 0.36)),
+    rgba(33, 23, 15, 0.90);
+  color: #fff4d9;
+  border: 1px solid rgba(225, 183, 109, 0.42);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.33),
+    inset 0 1px 0 rgba(255, 248, 231, 0.18);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease, border-color 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
 }
 
 .quick-actions-btn:hover {
   transform: translateY(-1px);
-  border-color: rgba(244, 195, 111, 0.55);
+  border-color: rgba(244, 195, 111, 0.82);
+  filter: saturate(1.08);
+}
+
+.quick-actions-btn:active {
+  transform: translateY(0);
 }
 
 .quick-actions-btn:disabled {
-  background: rgba(59, 66, 84, 0.70);
-  border-color: rgba(230, 230, 230, 0.12);
-  color: #aab2c2;
+  background: rgba(70, 62, 53, 0.64);
+  border-color: rgba(182, 167, 138, 0.22);
+  color: rgba(224, 214, 193, 0.58);
   transform: none;
+  filter: grayscale(0.35);
+}
+
+/* iPhoneはhoverが無いので、押せない理由をログで出す運用にして見た目だけ無効化する */
+.quick-actions-btn[aria-disabled="true"] {
+  background: rgba(70, 62, 53, 0.64);
+  border-color: rgba(182, 167, 138, 0.22);
+  color: rgba(224, 214, 193, 0.58);
+  transform: none;
+  filter: grayscale(0.35);
+}
+
+.quick-actions-btn[hidden] {
+  display: none !important;
 }
 
 @media (max-width: 1100px) {
   .quick-actions {
-    gap: clamp(10px, 1.2vw, 14px);
-  }
-  .quick-actions-btn {
-    padding: calc(5px + 0.5cm) calc(10px + 0.5cm);
+    right: 0;
+    bottom: calc((220px * var(--ui-compact)) + 34px);
+    width: clamp(210px, 30vw, 280px);
+    gap: 8px;
   }
 }
 
@@ -1341,25 +1508,36 @@ body::after {
   z-index: 5;
 }
 
-/* 憑依札：場所札の下に差し込まれて見える（ワンピカードアプリ風） */
-.possession-under {
+/* 憑依札：場所札の上に重ねて表示（手札→場へ移動した感が出る） */
+.possession-top {
   position: absolute;
-  left: 50%;
-  bottom: -24px;
-  transform: translateX(-50%);
-  width: 86%;
-  height: 100%;
+  top: -10px;
+  right: -10px;
+  width: 56%;
+  height: 56%;
   pointer-events: none;
-  z-index: 0;
+  z-index: 6;
 }
 
-.possession-under-card {
+.possession-top-card {
   position: absolute;
   inset: 0;
-  border-radius: 22px;
-  transform: translateY(calc((var(--pos-i, 0) + 1) * 12px)) scale(0.92);
+  border-radius: 18px;
+  transform:
+    translateX(calc(var(--pos-i, 0) * -10px))
+    translateY(calc(var(--pos-i, 0) * 10px))
+    rotate(calc(var(--pos-i, 0) * -3deg))
+    scale(0.92);
   opacity: 0.98;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+
+.possession-top-card .card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .possession-overlay {
@@ -1387,6 +1565,77 @@ body::after {
 /* 憑依中も枠内で安定表示 */
 .field-card--possessed {
   overflow: visible;
+}
+
+.field-card--error {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  background: rgba(120, 26, 26, 0.55);
+  border: 1px solid rgba(255, 170, 170, 0.35);
+  color: rgba(255, 240, 240, 0.92);
+  font-size: 11px;
+  border-radius: 12px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 1;
+  pointer-events: auto;
+}
+.confirm-overlay.confirm-overlay--show {
+  display: grid;
+}
+.confirm-card {
+  width: min(520px, 92vw);
+  background: rgba(21, 25, 36, 0.92);
+  border: 1px solid rgba(230, 230, 230, 0.14);
+  border-radius: 16px;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 14px 14px 12px;
+  display: grid;
+  gap: 10px;
+}
+.confirm-title {
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #eef2ff;
+}
+.confirm-message {
+  color: rgba(238, 242, 255, 0.86);
+  line-height: 1.4;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.confirm-btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(230, 230, 230, 0.16);
+  background: rgba(59, 66, 84, 0.55);
+  color: #eef2ff;
+}
+.confirm-btn--ghost {
+  background: transparent;
+}
+.confirm-btn--danger {
+  background: rgba(107, 124, 255, 0.35);
+  border-color: rgba(107, 124, 255, 0.55);
 }
 
 .field-card.card-set {
@@ -1854,7 +2103,16 @@ button:disabled {
 }
 
 .log.log--collapsed {
-  padding-bottom: 6px;
+  /* 枠も縮むように（gridのstretchを抑止） */
+  align-self: start;
+  padding: 6px 8px;
+}
+
+/* ログが縮小中は、右パネルの「最後の1fr」をやめてautoにする */
+@supports selector(.right-panel:has(#log-section.log--collapsed)) {
+  .right-panel:has(#log-section.log--collapsed) {
+    grid-template-rows: auto auto auto auto;
+  }
 }
 
 .rules {

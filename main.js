@@ -398,6 +398,12 @@ const state = {
     possessTargetId: "", // 怪異札の憑依先（明示選択）
     possessSelecting: false, // 憑依先選択モード
     attackSelecting: false, // 攻撃先選択モード
+    confirmActions: true, // 主要行動の確認ダイアログ
+  },
+  undo: {
+    stack: [],
+    // 自分ターンが終わったら巻き戻し不可にする（敵AIのランダム性があるため）
+    locked: false,
   },
   handLimit: {
     active: false,
@@ -473,10 +479,25 @@ const elements = {
   resultSubtitle: document.getElementById("result-subtitle"),
   resultReset: document.getElementById("result-reset"),
   deckOverlay: document.getElementById("deck-overlay"),
+  mulliganOverlay: document.getElementById("mulligan-overlay"),
+  mulliganHand: document.getElementById("mulligan-hand"),
+  mulliganCompleteBtn: document.getElementById("mulligan-complete-btn"),
   deckPickSpringSummer: document.getElementById("deck-pick-spring-summer"),
   deckPickAutumnWinter: document.getElementById("deck-pick-autumn-winter"),
   quickAttackBtn: document.getElementById("quick-attack-btn"),
   quickEndBtn: document.getElementById("quick-end-btn"),
+  quickSummonFieldBtn: document.getElementById("quick-summon-field-btn"),
+  quickSummonTopBtn: document.getElementById("quick-summon-top-btn"),
+  quickDeploySeasonBtn: document.getElementById("quick-deploy-season-btn"),
+  quickUseToolBtn: document.getElementById("quick-use-tool-btn"),
+  quickReturnHandBtn: document.getElementById("quick-returnhand-btn"),
+  quickPossessBtn: document.getElementById("quick-possess-btn"),
+  quickCancelBtn: document.getElementById("quick-cancel-btn"),
+  quickUndoBtn: document.getElementById("quick-undo-btn"),
+  confirmOverlay: document.getElementById("confirm-overlay"),
+  confirmMessage: document.getElementById("confirm-message"),
+  confirmOk: document.getElementById("confirm-ok"),
+  confirmCancel: document.getElementById("confirm-cancel"),
 };
 
 const setDeckOverlayVisible = (visible) => {
@@ -486,6 +507,38 @@ const setDeckOverlayVisible = (visible) => {
     elements.deckOverlay.classList.toggle("deck-overlay--show", show);
     elements.deckOverlay.setAttribute("aria-hidden", show ? "false" : "true");
   }
+};
+
+const setMulliganOverlayVisible = (visible) => {
+  const show = Boolean(visible);
+  if (elements.mulliganOverlay) {
+    elements.mulliganOverlay.classList.toggle("mulligan-overlay--show", show);
+    elements.mulliganOverlay.setAttribute("aria-hidden", show ? "false" : "true");
+  }
+};
+
+const renderMulliganOverlay = () => {
+  if (!elements.mulliganHand) return;
+  elements.mulliganHand.innerHTML = "";
+  const cards = Array.isArray(state.player?.hand) ? state.player.hand : [];
+  cards.forEach((card) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mulligan-hand-card";
+    btn.dataset.cardId = card.id;
+    if (state.mulligan.selection.has(card.id)) btn.classList.add("mulligan-hand-card--selected");
+    const image = card.imageUrl
+      ? `<img class="card-image" src="${card.imageUrl}" alt="${card.name}" />`
+      : "";
+    btn.innerHTML = image;
+    btn.addEventListener("click", () => {
+      if (!state.mulligan.active || state.mulligan.used) return;
+      if (state.mulligan.selection.has(card.id)) state.mulligan.selection.delete(card.id);
+      else state.mulligan.selection.add(card.id);
+      render();
+    });
+    elements.mulliganHand.appendChild(btn);
+  });
 };
 
 const getDeckPrototypes = (key) => {
@@ -500,6 +553,38 @@ const getDeckPrototypes = (key) => {
 };
 
 const getOppositeDeckKey = (key) => (key === "springSummer" ? "autumnWinter" : "springSummer");
+
+const beginMulliganPhase = () => {
+  state.phase = "零探しフェイズ";
+  state.mulligan.active = true;
+  state.mulligan.used = false;
+  state.mulligan.selection = new Set();
+  log("零探しフェイズ開始（入れ替える札をクリックで選択/解除）");
+  log("交換しない場合は「零探し確定」を押してください");
+};
+
+const completeMulligan = () => {
+  if (!state.mulligan.active || state.mulligan.used) return;
+  const selectedIds = Array.from(state.mulligan.selection);
+  if (selectedIds.length > 0) {
+    // Setの挿入順＝山札の一番下に置く順（= 後で到達したときに先に引く順）として扱う
+    const returning = selectedIds
+      .map((id) => state.player.hand.find((c) => c.id === id) || null)
+      .filter(Boolean);
+    state.player.hand = state.player.hand.filter((c) => !state.mulligan.selection.has(c.id));
+    returning.forEach((card) => state.player.deck.push(card));
+    returning.forEach(() => drawCard(state.player, "自分"));
+    log(`零探しで手札を入れ替えた（${returning.length}枚）`);
+  } else {
+    log("零探しをスキップ");
+  }
+  state.mulligan.used = true;
+  state.mulligan.active = false;
+  state.mulligan.selection.clear();
+  log("零探し完了。対戦開始");
+  startTurn("player");
+  render();
+};
 
 const startGameWithDeckChoice = (playerKey) => {
   const picked = playerKey === "autumnWinter" ? "autumnWinter" : "springSummer";
@@ -519,7 +604,7 @@ const startGameWithDeckChoice = (playerKey) => {
   state.ui.selectedFieldCardId = "";
   clearHandSelection();
   clearAttackSelection();
-  state.mulligan.active = false;
+  state.mulligan.active = true;
   state.mulligan.used = false;
   state.mulligan.selection = new Set();
   state.turnNumber = 1;
@@ -532,7 +617,7 @@ const startGameWithDeckChoice = (playerKey) => {
   }
   log(`デッキ選択: 自分=${picked === "springSummer" ? "春夏" : "秋冬"} / 相手=${enemyKey === "springSummer" ? "春夏" : "秋冬"}`);
   log("ゲーム開始（初期手札8枚）");
-  startTurn("player");
+  beginMulliganPhase();
   render();
 };
 
@@ -552,6 +637,123 @@ const clearHandSelection = () => {
 const clearAttackSelection = () => {
   state.ui.attackSelecting = false;
   state.ui.selectedFieldCardId = "";
+};
+
+let pendingConfirmOk = null;
+const setConfirmOverlayVisible = (visible, message) => {
+  const show = Boolean(visible);
+  elements.confirmOverlay?.classList.toggle("confirm-overlay--show", show);
+  elements.confirmOverlay?.setAttribute("aria-hidden", show ? "false" : "true");
+  if (elements.confirmOverlay) {
+    elements.confirmOverlay.style.display = show ? "grid" : "none";
+    elements.confirmOverlay.style.zIndex = "100000";
+  }
+  if (elements.confirmMessage && typeof message === "string") {
+    elements.confirmMessage.textContent = message;
+  }
+};
+
+const confirmAction = (message, onOk) => {
+  // onOk: () => void
+  if (typeof onOk !== "function") return false;
+  if (!state?.ui?.confirmActions) {
+    onOk();
+    return true;
+  }
+  pendingConfirmOk = onOk;
+  setConfirmOverlayVisible(true, String(message || ""));
+  return false;
+};
+
+const deepCloneKeepFns = (value, seen = new WeakMap()) => {
+  if (value === null || typeof value !== "object") return value;
+  if (typeof value === "function") return value;
+  if (seen.has(value)) return seen.get(value);
+  // Set は配列へ（UNDO復元時に Set に戻す）
+  if (value instanceof Set) {
+    const out = Array.from(value);
+    seen.set(value, out);
+    return out;
+  }
+  if (Array.isArray(value)) {
+    const out = [];
+    seen.set(value, out);
+    for (const v of value) out.push(deepCloneKeepFns(v, seen));
+    return out;
+  }
+  const out = {};
+  seen.set(value, out);
+  for (const [k, v] of Object.entries(value)) {
+    out[k] = deepCloneKeepFns(v, seen);
+  }
+  return out;
+};
+
+const buildUndoSnapshot = (label) => {
+  // 重要：UNDOの履歴（state.undo）はスナップショットに含めない（指数的に肥大化してフリーズする）
+  return {
+    __undoLabel: String(label || ""),
+    player: deepCloneKeepFns(state.player),
+    enemy: deepCloneKeepFns(state.enemy),
+    turn: state.turn,
+    logs: Array.isArray(state.logs) ? [...state.logs] : [],
+    gameOver: Boolean(state.gameOver),
+    deckChoice: deepCloneKeepFns(state.deckChoice),
+    result: deepCloneKeepFns(state.result),
+    phase: state.phase,
+    ui: deepCloneKeepFns(state.ui),
+    handLimit: {
+      active: Boolean(state.handLimit?.active),
+      needed: Number(state.handLimit?.needed ?? 0) || 0,
+      selection: Array.from(state.handLimit?.selection ?? []),
+    },
+    mulligan: {
+      active: Boolean(state.mulligan?.active),
+      used: Boolean(state.mulligan?.used),
+      selection: Array.from(state.mulligan?.selection ?? []),
+    },
+    turnNumber: Number(state.turnNumber ?? 1) || 1,
+    startingPlayer: state.startingPlayer,
+    hasDrawn: Boolean(state.hasDrawn),
+    playmat: deepCloneKeepFns(state.playmat),
+  };
+};
+
+const pushUndo = (label) => {
+  if (state.turn !== "player" || state.gameOver) return;
+  if (state.undo.locked) return;
+  const snap = buildUndoSnapshot(label);
+  state.undo.stack.push(snap);
+  // メモリ肥大防止
+  if (state.undo.stack.length > 30) state.undo.stack.shift();
+};
+
+const restoreFromUndo = () => {
+  if (state.turn !== "player" || state.gameOver) return false;
+  if (state.undo.locked) return false;
+  const snap = state.undo.stack.pop();
+  if (!snap) return false;
+  // スナップショットのキーだけ差し替える（state.undo 等の管理情報は保持）
+  state.player = snap.player;
+  state.enemy = snap.enemy;
+  state.turn = snap.turn;
+  state.logs = snap.logs;
+  state.gameOver = snap.gameOver;
+  state.deckChoice = snap.deckChoice;
+  state.result = snap.result;
+  state.phase = snap.phase;
+  state.ui = snap.ui;
+  state.handLimit = snap.handLimit;
+  state.mulligan = snap.mulligan;
+  state.turnNumber = snap.turnNumber;
+  state.startingPlayer = snap.startingPlayer;
+  state.hasDrawn = snap.hasDrawn;
+  state.playmat = snap.playmat;
+
+  // Set を復元
+  state.handLimit.selection = new Set(Array.isArray(snap.handLimit?.selection) ? snap.handLimit.selection : []);
+  state.mulligan.selection = new Set(Array.isArray(snap.mulligan?.selection) ? snap.mulligan.selection : []);
+  return true;
 };
 
 const getSelectedHandCard = () => {
@@ -839,6 +1041,8 @@ const log = (text) => {
   state.logs.unshift(text);
   state.logs = state.logs.slice(0, 40);
 };
+
+let isRenderInProgress = false;
 
 const getSoulCount = (fighter) => fighter.soul.length;
 
@@ -1275,6 +1479,9 @@ const canDrawThisTurn = (who) => {
 
 const enemyTurn = () => {
   if (state.gameOver) return;
+  // 敵ターンに入ったらUNDOはロック（敵AIがランダム行動するため）
+  state.undo.locked = true;
+  state.undo.stack = [];
   state.turn = "enemy";
   startTurn("enemy");
   if (canDrawThisTurn("enemy")) {
@@ -1343,6 +1550,8 @@ const enemyTurn = () => {
   state.turn = "player";
   state.turnNumber += 1;
   startTurn("player");
+  // 自分ターン開始でUNDO解除
+  state.undo.locked = false;
   render();
 };
 
@@ -1366,6 +1575,8 @@ const resetGame = () => {
   state.turnNumber = 1;
   state.startingPlayer = "player";
   state.hasDrawn = false;
+  state.undo.stack = [];
+  state.undo.locked = false;
   render();
   setDeckOverlayVisible(true);
 };
@@ -1845,15 +2056,12 @@ const initDragAndDrop = () => {
     render();
   });
 
-  // 手札/公開手札 → 公開手札
-  setupDropZone(elements.openHandArea, ({ from, cardId }) => {
+  // 手札公開場はカード効果でのみ使用（手動移動は不可）
+  setupDropZone(elements.openHandArea, ({ from }) => {
     if (state.turn !== "player" || state.gameOver) return;
     if (state.phase !== "メインフェイズ" || state.handLimit.active) return;
     if (from === "openHand") return;
-    const card = removeCardById(state.player.hand, cardId);
-    if (!card) return;
-    state.player.openHand.push(card);
-    log(`${card.name}を手札公開場に置いた`);
+    log("手札公開場に置けるのはカード効果のみです");
     render();
   });
 
@@ -1890,7 +2098,7 @@ const initDragAndDrop = () => {
       return;
     }
     if (!canPlayCard(state.player, card)) {
-      log("魂条件またはコストが足りない");
+      log(getCannotPlayReason(state.player, card) || "魂条件またはコストが足りない");
       state.player.hand.push(card);
       render();
       return;
@@ -1915,12 +2123,16 @@ const renderSeasonArea = (fighter, element, selectedId) => {
     : "";
   const top = fighter?.seasonTop ?? null;
   const topHtml = top
-    ? renderFieldCard(top, selectedId, {
-        wrapperClass: "season-top-card",
-        possessionCount: getPossessionCount(fighter, top.id),
-        attackable: state.ui?.attackSelecting && isAttackableLocationCard(top),
-      })
-    : `<button type="button" class="season-top-card season-top-card--empty" data-season-top-slot="1" aria-label="季節札の上の場所札（ここをクリック/ドロップで召喚）"></button>`;
+    ? `
+      <div class="season-top-slot" data-season-top-slot="1" aria-label="季節札の上の場所札">
+        ${renderFieldCard(top, selectedId, {
+          wrapperClass: "season-top-card",
+          possessionCount: getPossessionCount(fighter, top.id),
+          attackable: state.ui?.attackSelecting && isAttackableLocationCard(top),
+        })}
+      </div>
+    `
+    : `<button type="button" class="season-top-slot season-top-slot--empty" data-season-top-slot="1" aria-label="季節札の上の場所札（ここをクリック/ドロップで召喚）"></button>`;
   element.innerHTML = `
     <div class="season-stack">
       <div class="season-card">
@@ -1937,11 +2149,7 @@ const renderHand = () => {
     const button = document.createElement("button");
     button.className = "card";
     button.type = "button";
-    button.draggable =
-      state.turn === "player" &&
-      !state.gameOver &&
-      state.phase === "メインフェイズ" &&
-      !state.handLimit.active;
+    button.draggable = false;
     button.disabled =
       state.turn !== "player" ||
       state.gameOver ||
@@ -1963,14 +2171,6 @@ const renderHand = () => {
     button.innerHTML = `
       ${image}
     `;
-    button.addEventListener("dragstart", (e) => {
-      if (state.gameOver) return;
-      e.dataTransfer?.setData(
-        "text/plain",
-        JSON.stringify({ from: "hand", cardId: card.id }),
-      );
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
-    });
     button.addEventListener("click", (e) => {
       if (state.turn !== "player" || state.gameOver) return;
       if (state.handLimit.active) {
@@ -2015,7 +2215,7 @@ const renderHand = () => {
       } else {
         state.ui.possessSelecting = false;
         state.ui.possessTargetId = "";
-        log("札を選択。出したい場所（場/季節/魂）をクリックしてください");
+        log("札を選択。手札付近の操作ボタン（場へ/季節上/展開/発動/戻す/憑依）を押してください");
       }
       render();
     });
@@ -2032,13 +2232,10 @@ const renderHand = () => {
 const renderOpenHand = () => {
   elements.openHandArea.innerHTML = "";
   state.player.openHand.forEach((card) => {
-    const cardDiv = document.createElement("div");
+    const cardDiv = document.createElement("button");
     cardDiv.className = "card";
-    cardDiv.draggable =
-      state.turn === "player" &&
-      !state.gameOver &&
-      state.phase === "メインフェイズ" &&
-      !state.handLimit.active;
+    cardDiv.type = "button";
+    cardDiv.draggable = false;
     cardDiv.dataset.cardId = card.id;
     if (state.ui?.selectedHandCardId === card.id && state.ui?.selectedHandFrom === "openHand") {
       cardDiv.classList.add("card--play-selected");
@@ -2052,14 +2249,6 @@ const renderOpenHand = () => {
     cardDiv.innerHTML = `
       ${image}
     `;
-    cardDiv.addEventListener("dragstart", (e) => {
-      if (state.gameOver) return;
-      e.dataTransfer?.setData(
-        "text/plain",
-        JSON.stringify({ from: "openHand", cardId: card.id }),
-      );
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
-    });
     cardDiv.addEventListener("click", () => {
       if (state.turn !== "player" || state.gameOver) return;
       if (state.handLimit.active) {
@@ -2088,7 +2277,7 @@ const renderOpenHand = () => {
       } else {
         state.ui.possessSelecting = false;
         state.ui.possessTargetId = "";
-        log("札を選択。出したい場所（場/季節/魂）をクリックしてください");
+        log("札を選択。手札付近の操作ボタン（場へ/季節上/展開/発動/戻す/憑依）を押してください");
       }
       render();
     });
@@ -2097,6 +2286,7 @@ const renderOpenHand = () => {
 };
 
 const renderFieldCard = (card, selectedId, meta) => {
+  try {
   if (!card) return "";
   const possessionCount = Number(meta?.possessionCount ?? 0) || 0;
   const possessionVisible = Array.isArray(meta?.possessionVisible) ? meta.possessionVisible : [];
@@ -2106,15 +2296,19 @@ const renderFieldCard = (card, selectedId, meta) => {
   const attackable = meta?.attackable ? " field-card--attackable" : "";
   const data = card.id ? ` data-field-cardid="${card.id}"` : "";
   const possessedClass = possessionCount > 0 ? " field-card--possessed" : "";
-  const possessionUnder =
+  const possessionTop =
     possessionCount > 0
       ? `
-        <div class="possession-under" aria-hidden="true">
+        <div class="possession-top" aria-hidden="true">
           ${possessionVisible
-            .map(
-              (_c, i) =>
-                `<div class="card-back possession-under-card" style="--pos-i:${i}"></div>`,
-            )
+            .map((c, i) => {
+              const img = c?.facedown
+                ? `<div class="card-back possession-top-card" style="--pos-i:${i}"></div>`
+                : c?.imageUrl
+                  ? `<div class="possession-top-card" style="--pos-i:${i}"><img class="card-image" src="${c.imageUrl}" alt="${c.name || ""}" /></div>`
+                  : `<div class="card-back possession-top-card" style="--pos-i:${i}"></div>`;
+              return img;
+            })
             .join("")}
         </div>
         <div class="possession-badge" aria-label="憑依札">${possessionCount}</div>
@@ -2125,7 +2319,7 @@ const renderFieldCard = (card, selectedId, meta) => {
       <div class="field-card card-facedown${selected}${possessTarget}${attackable}${wrapperClass}${possessedClass}"${data}>
         <div class="field-card-face" aria-label="裏向きカード">
           <div class="card-back card-back--field" aria-hidden="true"></div>
-          ${possessionUnder}
+          ${possessionTop}
         </div>
       </div>
     `;
@@ -2138,10 +2332,15 @@ const renderFieldCard = (card, selectedId, meta) => {
     <div class="field-card${setClass}${selected}${possessTarget}${attackable}${wrapperClass}${possessedClass}"${data}>
       <div class="field-card-face">
         ${image}
-        ${possessionUnder}
+        ${possessionTop}
       </div>
     </div>
   `;
+  } catch (err) {
+    // 描画エラーでゲーム全体が操作不能にならないようにする
+    const msg = err?.message ? String(err.message) : "render error";
+    return `<div class="field-card field-card--error" aria-label="描画エラー">${msg}</div>`;
+  }
 };
 
 const renderFieldCards = (fighter, field, selectedId) => {
@@ -2159,6 +2358,9 @@ const renderFieldCards = (fighter, field, selectedId) => {
 };
 
 const render = () => {
+  if (isRenderInProgress) return;
+  isRenderInProgress = true;
+  try {
   elements.playerHp && (elements.playerHp.textContent = String(state.player.hp));
   elements.enemyHp && (elements.enemyHp.textContent = String(state.enemy.hp));
   elements.deckCount && (elements.deckCount.textContent = String(state.player.deck.length));
@@ -2194,8 +2396,11 @@ const render = () => {
   elements.endBtn &&
     (elements.endBtn.disabled =
       state.turn !== "player" || state.gameOver || state.handLimit.active);
+  // 零探しは専用オーバーレイで操作するため、右パネルの旧ボタンは隠す
+  if (elements.mulliganBtn) elements.mulliganBtn.hidden = true;
+  if (elements.mulliganConfirmBtn) elements.mulliganConfirmBtn.hidden = true;
   elements.mulliganBtn &&
-    (elements.mulliganBtn.disabled = state.mulligan.used || state.turnNumber !== 1);
+    (elements.mulliganBtn.disabled = state.mulligan.used || state.turnNumber !== 1 || !state.mulligan.active);
   elements.mulliganConfirmBtn &&
     (elements.mulliganConfirmBtn.disabled = !state.mulligan.active);
   if (elements.phaseLabel) {
@@ -2204,23 +2409,24 @@ const render = () => {
 
   if (elements.declareLocationSummon) {
     elements.declareLocationSummon.disabled = Boolean(state.player?.mainUsed?.locationSummon);
+    elements.declareLocationSummon.textContent = "【場所札】召喚";
   }
   if (elements.declareLocationAttack) {
     elements.declareLocationAttack.disabled = Boolean(state.player?.mainUsed?.locationAttack);
+    elements.declareLocationAttack.textContent = "【場所札】攻撃";
   }
   if (elements.declareAnomalyPossess) {
     elements.declareAnomalyPossess.disabled = Boolean(state.player?.mainUsed?.anomalyPossess);
+    elements.declareAnomalyPossess.textContent = "【怪異札】憑依";
   }
   if (elements.declareSeasonDeploy) {
     elements.declareSeasonDeploy.disabled = Boolean(state.player?.mainUsed?.seasonDeploy);
+    elements.declareSeasonDeploy.textContent = "【季節札】展開";
   }
   if (elements.declareToolUse) {
-    elements.declareToolUse.disabled =
-      state.turn !== "player" ||
-      state.gameOver ||
-      state.phase !== "メインフェイズ" ||
-      state.handLimit.active ||
-      !canUseToolNow(state.player);
+    // 表示専用: 道具札を使用済みならグレーアウト
+    elements.declareToolUse.disabled = Boolean(state.player?.tool?.usedInWindow);
+    elements.declareToolUse.textContent = "【道具札】発動";
   }
 
   // 手札調整中は「ターン終了」ボタンが確定ボタンを兼ねる
@@ -2244,11 +2450,177 @@ const render = () => {
     elements.quickEndBtn.disabled = Boolean(elements.endBtn?.disabled);
     elements.quickEndBtn.textContent = elements.endBtn?.textContent || "ターン終了";
   }
+
+  // 手札で【場所札】を選択した時だけ「場へ/季節上」を出す
+  const pickedForQuick = getSelectedHandCard?.() ?? null;
+  const pickedLocation = pickedForQuick?.card?.attribute === "場所札" ? pickedForQuick : null;
+  const pickedSeason = pickedForQuick?.card?.attribute === "季節札" ? pickedForQuick : null;
+  const pickedTool = pickedForQuick?.card?.attribute === "道具札" ? pickedForQuick : null;
+  const pickedAnomaly = pickedForQuick?.card?.attribute === "怪異札" ? pickedForQuick : null;
+  const summonContextOk =
+    Boolean(pickedLocation) &&
+    state.turn === "player" &&
+    !state.gameOver &&
+    state.phase === "メインフェイズ" &&
+    !state.handLimit.active;
+  const summonUsed = Boolean(state.player?.mainUsed?.locationSummon);
+  const pickedCard = pickedLocation?.card ?? null;
+  const canPayPicked = pickedCard ? canPlayCard(state.player, pickedCard) : false;
+  const cannotReason = pickedCard ? (getCannotPlayReason(state.player, pickedCard) || "") : "";
+
+  if (elements.quickSummonFieldBtn) {
+    elements.quickSummonFieldBtn.hidden = !pickedLocation;
+    elements.quickSummonFieldBtn.textContent = "場へ";
+    const reason = !summonContextOk
+      ? "今は召喚できません（自分ターン/メインフェイズ中のみ）"
+      : summonUsed
+        ? "このターンはすでに【場所札】召喚を使用しています"
+        : !canPayPicked
+          ? (cannotReason || "魂条件またはコストが足りない")
+          : "";
+    elements.quickSummonFieldBtn.setAttribute("aria-disabled", reason ? "true" : "false");
+    elements.quickSummonFieldBtn.dataset.blockReason = reason;
+  }
+  if (elements.quickSummonTopBtn) {
+    const hasSeason = Boolean(state.player?.seasonField);
+    const topEmpty = !state.player?.seasonTop;
+    elements.quickSummonTopBtn.hidden = !pickedLocation;
+    elements.quickSummonTopBtn.textContent = hasSeason ? (topEmpty ? "季節上" : "季節上（埋）") : "季節上（無）";
+    const reason = !summonContextOk
+      ? "今は召喚できません（自分ターン/メインフェイズ中のみ）"
+      : summonUsed
+        ? "このターンはすでに【場所札】召喚を使用しています"
+        : !hasSeason
+          ? "季節札が場にありません"
+          : !topEmpty
+            ? `季節札の上は埋まっています（${state.player?.seasonTop?.name || "場所札"}）`
+            : !canPayPicked
+              ? (cannotReason || "魂条件またはコストが足りない")
+              : "";
+    elements.quickSummonTopBtn.setAttribute("aria-disabled", reason ? "true" : "false");
+    elements.quickSummonTopBtn.dataset.blockReason = reason;
+  }
+  // 季節札：展開
+  if (elements.quickDeploySeasonBtn) {
+    const okContext =
+      Boolean(pickedSeason) &&
+      state.turn === "player" &&
+      !state.gameOver &&
+      state.phase === "メインフェイズ" &&
+      !state.handLimit.active;
+    const used = Boolean(state.player?.mainUsed?.seasonDeploy);
+    const card = pickedSeason?.card ?? null;
+    const canPay = card ? canPlayCard(state.player, card) : false;
+    const reason = !okContext
+      ? "今は展開できません（自分ターン/メインフェイズ中のみ）"
+      : used
+        ? "このターンはすでに【季節札】展開を使用しています"
+        : !canPay
+          ? (getCannotPlayReason(state.player, card) || "魂条件またはコストが足りない")
+          : "";
+    elements.quickDeploySeasonBtn.hidden = !pickedSeason;
+    elements.quickDeploySeasonBtn.textContent = "展開";
+    elements.quickDeploySeasonBtn.setAttribute("aria-disabled", reason ? "true" : "false");
+    elements.quickDeploySeasonBtn.dataset.blockReason = reason;
+  }
+
+  // 道具札：発動（魂へ）
+  if (elements.quickUseToolBtn) {
+    const okContext =
+      Boolean(pickedTool) &&
+      state.turn === "player" &&
+      !state.gameOver &&
+      state.phase === "メインフェイズ" &&
+      !state.handLimit.active;
+    const card = pickedTool?.card ?? null;
+    const decl = okContext && card ? meetsDeclarationForCard(state.player, card) : { ok: false, reason: "" };
+    const canPay = card ? canPlayCard(state.player, card) : false;
+    const reason = !okContext
+      ? "今は発動できません（自分ターン/メインフェイズ中のみ）"
+      : !decl.ok
+        ? (decl.reason || "この間、道具札は使用できません")
+        : !canPay
+          ? (getCannotPlayReason(state.player, card) || "魂条件またはコストが足りない")
+          : "";
+    elements.quickUseToolBtn.hidden = !pickedTool;
+    elements.quickUseToolBtn.textContent = "発動";
+    elements.quickUseToolBtn.setAttribute("aria-disabled", reason ? "true" : "false");
+    elements.quickUseToolBtn.dataset.blockReason = reason;
+  }
+
+  // 手札に戻す（公開手札→手札）
+  if (elements.quickReturnHandBtn) {
+    const okContext =
+      pickedForQuick?.from === "openHand" &&
+      state.turn === "player" &&
+      !state.gameOver &&
+      state.phase === "メインフェイズ" &&
+      !state.handLimit.active;
+    const reason = okContext ? "" : "今は戻せません（自分ターン/メインフェイズ中のみ）";
+    elements.quickReturnHandBtn.hidden = !(pickedForQuick && pickedForQuick.from === "openHand");
+    elements.quickReturnHandBtn.textContent = "戻す";
+    elements.quickReturnHandBtn.setAttribute("aria-disabled", reason ? "true" : "false");
+    elements.quickReturnHandBtn.dataset.blockReason = reason;
+  }
+
+  // 憑依（怪異札）
+  if (elements.quickPossessBtn) {
+    const okContext =
+      Boolean(pickedAnomaly) &&
+      state.turn === "player" &&
+      !state.gameOver &&
+      state.phase === "メインフェイズ" &&
+      !state.handLimit.active;
+    const decl = okContext && pickedAnomaly?.card ? meetsDeclarationForCard(state.player, pickedAnomaly.card) : { ok: false, reason: "" };
+    const reason = !okContext
+      ? "今は憑依できません（自分ターン/メインフェイズ中のみ）"
+      : !decl.ok
+        ? (decl.reason || "このターンはすでに【怪異札】憑依を使用しています")
+        : "";
+    elements.quickPossessBtn.hidden = !pickedAnomaly || Boolean(state.ui?.possessSelecting);
+    elements.quickPossessBtn.textContent = "憑依";
+    elements.quickPossessBtn.setAttribute("aria-disabled", reason ? "true" : "false");
+    elements.quickPossessBtn.dataset.blockReason = reason;
+  }
+
+  // キャンセル（選択解除）
+  if (elements.quickCancelBtn) {
+    const hasSel = Boolean(state.ui?.selectedHandCardId);
+    elements.quickCancelBtn.hidden = !hasSel;
+    elements.quickCancelBtn.textContent = "キャンセル";
+    elements.quickCancelBtn.setAttribute("aria-disabled", "false");
+    elements.quickCancelBtn.dataset.blockReason = "";
+  }
+
+  // UNDO
+  if (elements.quickUndoBtn) {
+    const ok = state.turn === "player" && !state.gameOver && !state.undo.locked && state.undo.stack.length > 0;
+    elements.quickUndoBtn.setAttribute("aria-disabled", ok ? "false" : "true");
+    elements.quickUndoBtn.dataset.blockReason = ok ? "" : "UNDOできません（自分ターン中の直前操作のみ）";
+  }
+  const mulliganShowing = Boolean(state.mulligan.active && !state.gameOver && !state.deckChoice.active);
+  setMulliganOverlayVisible(mulliganShowing);
+  renderMulliganOverlay();
+  if (elements.mulliganCompleteBtn) {
+    elements.mulliganCompleteBtn.disabled = !state.mulligan.active || state.mulligan.used;
+  }
   renderSoulArea(state.player, elements.playerSoulArea);
   renderSoulArea(state.enemy, elements.enemySoulArea);
   renderEnemyHand();
   renderOpenHand();
   renderHand();
+  } catch (err) {
+    // render 自体が落ちると「何もできない」になるので、最低限ログだけ残す
+    const msg = err?.message ? String(err.message) : "render error";
+    try {
+      state.logs.unshift(`エラー: ${msg}`);
+      state.logs = state.logs.slice(0, 40);
+    } catch {
+      // ignore
+    }
+  } finally {
+    isRenderInProgress = false;
+  }
 };
 
 const setLogCollapsed = (collapsed) => {
@@ -2278,77 +2650,15 @@ elements.bgmCollapse?.addEventListener("click", () => {
   setBgmCollapsed(!collapsed);
 });
 elements.mulliganBtn.addEventListener("click", () => {
-  if (state.mulligan.used || state.turnNumber !== 1) return;
-  state.mulligan.active = !state.mulligan.active;
-  if (!state.mulligan.active) {
-    state.mulligan.selection.clear();
-    log("零探しを中断");
-  } else {
-    log("零探しします（入れ替える札をクリック。順番を変えるにはもう一度クリック / 外すにはShift+クリック）");
-  }
+  if (state.mulligan.used || state.turnNumber !== 1 || !state.mulligan.active) return;
+  state.mulligan.selection.clear();
+  log("零探しの選択をクリア");
   render();
 });
 elements.mulliganConfirmBtn.addEventListener("click", () => {
-  if (!state.mulligan.active || state.mulligan.used) return;
-  const selectedIds = Array.from(state.mulligan.selection);
-  if (selectedIds.length > 0) {
-    // Setの挿入順＝山札の一番下に置く順（= 後で到達したときに先に引く順）として扱う
-    const returning = selectedIds
-      .map((id) => state.player.hand.find((c) => c.id === id) || null)
-      .filter(Boolean);
-    state.player.hand = state.player.hand.filter((c) => !state.mulligan.selection.has(c.id));
-    returning.forEach((card) => state.player.deck.push(card));
-    returning.forEach(() => drawCard(state.player, "自分"));
-    log(`零探しで手札を入れ替えた（${returning.length}枚）`);
-  } else {
-    log("零探しをスキップ");
-  }
-  state.mulligan.used = true;
-  state.mulligan.active = false;
-  state.mulligan.selection.clear();
-  render();
+  completeMulligan();
 });
-
-// 【怪異札】憑依：対象選択モード
-elements.declareAnomalyPossess?.addEventListener("click", () => {
-  if (state.turn !== "player" || state.gameOver) return;
-  if (state.phase !== "メインフェイズ") {
-    log("メインフェイズでのみ行動できます");
-    render();
-    return;
-  }
-  if (state.handLimit.active) return;
-  if (state.player.mainUsed.anomalyPossess) {
-    log("【怪異札】憑依はこのターンすでに使用しています");
-    render();
-    return;
-  }
-  state.ui.possessSelecting = !state.ui.possessSelecting;
-  if (!state.ui.possessSelecting) {
-    state.ui.possessTargetId = "";
-  } else {
-    log("憑依先の【場所札】をクリックで選択してください（選択後、怪異札を場へドラッグ）");
-  }
-  render();
-});
-
-// 【道具札】発動（宣言）
-elements.declareToolUse?.addEventListener("click", () => {
-  if (state.turn !== "player" || state.gameOver) return;
-  if (state.phase !== "メインフェイズ") {
-    log("メインフェイズでのみ行動できます");
-    render();
-    return;
-  }
-  if (state.handLimit.active) return;
-  if (!canUseToolNow(state.player)) {
-    log("この間、道具札は使用できません");
-    render();
-    return;
-  }
-  log("【道具札】発動を宣言。道具札を選択して「魂」をクリック（または魂へドラッグ）してください");
-  render();
-});
+elements.mulliganCompleteBtn?.addEventListener("click", completeMulligan);
 
 // 場（場所札）クリックで攻撃対象を選択
 elements.playerField?.addEventListener("click", (e) => {
@@ -2382,65 +2692,43 @@ elements.playerField?.addEventListener("click", (e) => {
         render();
         return;
       }
-      const decl = meetsDeclarationForCard(state.player, card);
-      if (!decl.ok) {
-        log(decl.reason);
-        render();
-        return;
-      }
-      // 手札から取り除いて憑依
-      const origin = picked.origin;
-      const removed = removeCardById(origin, card.id);
-      if (!removed) return;
-      if (!attachPossession(state.player, id, removed)) {
-        state.player.openHand.push(removed);
-        log("憑依先を失ったので怪異札を手札公開場に置いた");
+      // 対象選択（ハイライト）
+      state.ui.possessTargetId = id;
+      confirmAction(`【怪異札】「${card.name}」を「${id}」へ憑依します。よろしいですか？`, () => {
+        pushUndo(`possess:${card.id}->${id}`);
+        const decl = meetsDeclarationForCard(state.player, card);
+        if (!decl.ok) {
+          log(decl.reason);
+          render();
+          return;
+        }
+        // 手札から取り除いて憑依
+        const origin = picked.origin;
+        const removed = removeCardById(origin, card.id);
+        if (!removed) return;
+        if (!attachPossession(state.player, id, removed)) {
+          state.player.openHand.push(removed);
+          log("憑依先を失ったので怪異札を手札公開場に置いた");
+          clearHandSelection();
+          render();
+          return;
+        }
+        log(`怪異札（${removed.name}）を憑依した: ${id}`);
+        if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
         clearHandSelection();
+        state.ui.possessTargetId = "";
         render();
-        return;
-      }
-      log(`怪異札（${removed.name}）を裏向きで憑依した: ${id}`);
-      if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
-      clearHandSelection();
-      render();
+      });
       return;
     }
-
-    // 場所札：場へ召喚（クリックで確定）
-    if (card.attribute === "場所札") {
-      const decl = meetsDeclarationForCard(state.player, card);
-      if (!decl.ok) {
-        log(decl.reason);
-        render();
-        return;
-      }
-      if (!canPlayCard(state.player, card)) {
-        log(getCannotPlayReason(state.player, card) || "魂条件またはコストが足りない");
-        render();
-        return;
-      }
-      const removed = removeCardById(picked.origin, card.id);
-      if (!removed) return;
-      removed.facedown = false;
-      removed.set = true;
-      removed.sleeping = false;
-      state.player.field.push(removed);
-      const detail = (removed.summonEffect ?? removed.effect)?.(state.player, state.enemy);
-      log(`自分が${removed.name}を召喚: ${detail || "（効果なし）"}`);
-      if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
-      clearHandSelection();
-      checkWinner();
-      render();
-      return;
-    }
-
-    // 季節札/道具札はここでは確定しない（季節/魂をクリック）
   }
 
   // 手札選択が無い場合：従来どおり攻撃対象選択
   if (!target) return;
   if (!id) return;
-  state.ui.selectedFieldCardId = state.ui.selectedFieldCardId === id ? "" : id;
+  // 憑依先の選択（先に場所札を選ぶ運用）
+  state.ui.possessTargetId = state.ui.possessTargetId === id ? "" : id;
+  log(state.ui.possessTargetId ? "憑依先の【場所札】を選択しました" : "憑依先選択を解除");
   render();
 });
 
@@ -2477,88 +2765,30 @@ elements.playerSeasonArea?.addEventListener("click", (e) => {
         render();
         return;
       }
-      const decl = meetsDeclarationForCard(state.player, card);
-      if (!decl.ok) {
-        log(decl.reason);
-        render();
-        return;
-      }
-      const removed = removeCardById(picked.origin, card.id);
-      if (!removed) return;
-      if (!attachPossession(state.player, targetId, removed)) {
-        state.player.openHand.push(removed);
-        log("憑依先を失ったので怪異札を手札公開場に置いた");
+      state.ui.possessTargetId = targetId;
+      confirmAction(`【怪異札】「${card.name}」を「${targetId}」へ憑依します。よろしいですか？`, () => {
+        pushUndo(`possess:${card.id}->${targetId}`);
+        const decl = meetsDeclarationForCard(state.player, card);
+        if (!decl.ok) {
+          log(decl.reason);
+          render();
+          return;
+        }
+        const removed = removeCardById(picked.origin, card.id);
+        if (!removed) return;
+        if (!attachPossession(state.player, targetId, removed)) {
+          state.player.openHand.push(removed);
+          log("憑依先を失ったので怪異札を手札公開場に置いた");
+          clearHandSelection();
+          render();
+          return;
+        }
+        log(`怪異札（${removed.name}）を憑依した: ${targetId}`);
+        if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
         clearHandSelection();
+        state.ui.possessTargetId = "";
         render();
-        return;
-      }
-      log(`怪異札（${removed.name}）を裏向きで憑依した: ${targetId}`);
-      if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
-      clearHandSelection();
-      render();
-      return;
-    }
-
-    // 季節札：展開（クリックで確定）
-    if (card.attribute === "季節札") {
-      const decl = meetsDeclarationForCard(state.player, card);
-      if (!decl.ok) {
-        log(decl.reason);
-        render();
-        return;
-      }
-      if (!canPlayCard(state.player, card)) {
-        log(getCannotPlayReason(state.player, card) || "魂条件またはコストが足りない");
-        render();
-        return;
-      }
-      const removed = removeCardById(picked.origin, card.id);
-      if (!removed) return;
-      playCard(state.player, state.enemy, removed, "自分");
-      if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
-      clearHandSelection();
-      checkWinner();
-      render();
-      return;
-    }
-
-    // 場所札：季節札の上に召喚（クリックで確定）
-    if (card.attribute === "場所札") {
-      if (!state.player.seasonField) {
-        log("季節札が場にありません");
-        render();
-        return;
-      }
-      const decl = meetsDeclarationForCard(state.player, card);
-      if (!decl.ok) {
-        log(decl.reason);
-        render();
-        return;
-      }
-      if (!canPlayCard(state.player, card)) {
-        log("魂条件またはコストが足りない");
-        render();
-        return;
-      }
-      const removed = removeCardById(picked.origin, card.id);
-      if (!removed) return;
-      removed.facedown = false;
-      removed.set = true;
-      removed.sleeping = false;
-      if (state.player.seasonTop) {
-        if (!Array.isArray(state.player.field)) state.player.field = [];
-        state.player.field.push(removed);
-        const detail = (removed.summonEffect ?? removed.effect)?.(state.player, state.enemy);
-        log(`自分が${removed.name}を召喚: ${detail || "（効果なし）"}（季節札の上が埋まっているため場へ）`);
-      } else {
-        state.player.seasonTop = removed;
-        const detail = (removed.summonEffect ?? removed.effect)?.(state.player, state.enemy);
-        log(`自分が${removed.name}を季節札の上に召喚: ${detail || "（効果なし）"}`);
-      }
-      if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
-      clearHandSelection();
-      checkWinner();
-      render();
+      });
       return;
     }
   }
@@ -2566,7 +2796,8 @@ elements.playerSeasonArea?.addEventListener("click", (e) => {
   // 手札選択が無い場合：従来どおり攻撃対象選択
   if (!target) return;
   if (!id) return;
-  state.ui.selectedFieldCardId = state.ui.selectedFieldCardId === id ? "" : id;
+  state.ui.possessTargetId = state.ui.possessTargetId === id ? "" : id;
+  log(state.ui.possessTargetId ? "憑依先の【場所札】を選択しました" : "憑依先選択を解除");
   render();
 });
 elements.attackBtn.addEventListener("click", () => {
@@ -2695,12 +2926,417 @@ elements.quickAttackBtn?.addEventListener("click", () => {
 elements.quickEndBtn?.addEventListener("click", () => {
   elements.endBtn?.click();
 });
+elements.quickCancelBtn?.addEventListener("click", () => {
+  clearHandSelection();
+  render();
+});
+elements.quickUndoBtn?.addEventListener("click", () => {
+  const reason = elements.quickUndoBtn?.dataset?.blockReason || "";
+  if (reason) {
+    log(reason);
+    render();
+    return;
+  }
+  if (restoreFromUndo()) {
+    log("UNDOしました");
+    applyPlaymatSettings();
+    render();
+  }
+});
+
+elements.confirmCancel?.addEventListener("click", () => {
+  pendingConfirmOk = null;
+  setConfirmOverlayVisible(false, "");
+  log("キャンセルしました");
+  render();
+});
+elements.confirmOk?.addEventListener("click", () => {
+  const fn = pendingConfirmOk;
+  pendingConfirmOk = null;
+  setConfirmOverlayVisible(false, "");
+  try {
+    fn?.();
+  } catch (err) {
+    log(`エラー: ${err?.message ? String(err.message) : "unknown error"}`);
+    render();
+  }
+});
+elements.confirmOverlay?.addEventListener("click", (e) => {
+  // 背景クリックでキャンセル
+  if (e?.target === elements.confirmOverlay) {
+    pendingConfirmOk = null;
+    setConfirmOverlayVisible(false, "");
+    log("キャンセルしました");
+    render();
+  }
+});
+
+// クイック操作：場所札を「場へ」出す
+elements.quickSummonFieldBtn?.addEventListener("click", () => {
+  try {
+    const reason = elements.quickSummonFieldBtn?.dataset?.blockReason || "";
+    log(reason ? `操作: 場へ → ${reason}` : "操作: 場へ");
+    if (reason) {
+      render();
+      return;
+    }
+    if (state.turn !== "player" || state.gameOver) {
+      log("今は自分のターンではありません");
+      render();
+      return;
+    }
+    if (state.phase !== "メインフェイズ") {
+      log("メインフェイズでのみ行動できます");
+      render();
+      return;
+    }
+    if (state.handLimit.active) {
+      log("手札調整中です");
+      render();
+      return;
+    }
+    const picked = getSelectedHandCard?.() ?? null;
+    const card = picked?.card ?? null;
+    if (!picked || !card || card.attribute !== "場所札") {
+      log("召喚する【場所札】を手札から選択してください");
+      render();
+      return;
+    }
+    log(`確認: 場へ（${card.name}）`);
+    const pickedFrom = picked.from;
+    const pickedId = card.id;
+    confirmAction(`【場所札】「${card.name}」を場に召喚します。よろしいですか？`, () => {
+      const origin = pickedFrom === "openHand" ? state.player.openHand : state.player.hand;
+      const cardNow = origin.find((c) => c?.id === pickedId) || null;
+      if (!cardNow) {
+        log("選択が変わったため、もう一度札を選択してください");
+        render();
+        return;
+      }
+      pushUndo(`summon:field:${cardNow.id}`);
+      const decl = meetsDeclarationForCard(state.player, cardNow);
+      if (!decl.ok) {
+        log(decl.reason);
+        render();
+        return;
+      }
+      if (!canPlayCard(state.player, cardNow)) {
+        log(getCannotPlayReason(state.player, cardNow) || "魂条件またはコストが足りない");
+        render();
+        return;
+      }
+      const removed = removeCardById(origin, cardNow.id);
+      if (!removed) return;
+      removed.facedown = false;
+      removed.set = true;
+      removed.sleeping = false;
+      if (!Array.isArray(state.player.field)) state.player.field = [];
+      state.player.field.push(removed);
+      const detail = (removed.summonEffect ?? removed.effect)?.(state.player, state.enemy);
+      log(`自分が${removed.name}を召喚: ${detail || "（効果なし）"}`);
+      if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
+      clearHandSelection();
+      checkWinner();
+      render();
+    });
+  } catch (err) {
+    log(`エラー: ${err?.message ? String(err.message) : "unknown error"}`);
+    render();
+  }
+});
+
+// クイック操作：場所札を「季節札の上」へ出す
+elements.quickSummonTopBtn?.addEventListener("click", () => {
+  try {
+    const reason = elements.quickSummonTopBtn?.dataset?.blockReason || "";
+    log(reason ? `操作: 季節上 → ${reason}` : "操作: 季節上");
+    if (reason) {
+      render();
+      return;
+    }
+    if (state.turn !== "player" || state.gameOver) {
+      log("今は自分のターンではありません");
+      render();
+      return;
+    }
+    if (state.phase !== "メインフェイズ") {
+      log("メインフェイズでのみ行動できます");
+      render();
+      return;
+    }
+    if (state.handLimit.active) {
+      log("手札調整中です");
+      render();
+      return;
+    }
+    if (!state.player.seasonField) {
+      log("季節札が場にありません");
+      render();
+      return;
+    }
+    if (state.player.seasonTop) {
+      log("季節札の上には【場所札】を1枚までしか召喚できません");
+      render();
+      return;
+    }
+    const picked = getSelectedHandCard?.() ?? null;
+    const card = picked?.card ?? null;
+    if (!picked || !card || card.attribute !== "場所札") {
+      log("召喚する【場所札】を手札から選択してください");
+      render();
+      return;
+    }
+    log(`確認: 季節上（${card.name}）`);
+    const pickedFrom = picked.from;
+    const pickedId = card.id;
+    confirmAction(`【場所札】「${card.name}」を季節札の上に召喚します。よろしいですか？`, () => {
+      const origin = pickedFrom === "openHand" ? state.player.openHand : state.player.hand;
+      const cardNow = origin.find((c) => c?.id === pickedId) || null;
+      if (!cardNow) {
+        log("選択が変わったため、もう一度札を選択してください");
+        render();
+        return;
+      }
+      pushUndo(`summon:top:${cardNow.id}`);
+      const decl = meetsDeclarationForCard(state.player, cardNow);
+      if (!decl.ok) {
+        log(decl.reason);
+        render();
+        return;
+      }
+      if (!canPlayCard(state.player, cardNow)) {
+        log(getCannotPlayReason(state.player, cardNow) || "魂条件またはコストが足りない");
+        render();
+        return;
+      }
+      const removed = removeCardById(origin, cardNow.id);
+      if (!removed) return;
+      removed.facedown = false;
+      removed.set = true;
+      removed.sleeping = false;
+      state.player.seasonTop = removed;
+      const detail = (removed.summonEffect ?? removed.effect)?.(state.player, state.enemy);
+      log(`自分が${removed.name}を季節札の上に召喚: ${detail || "（効果なし）"}`);
+      if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
+      clearHandSelection();
+      checkWinner();
+      render();
+    });
+  } catch (err) {
+    log(`エラー: ${err?.message ? String(err.message) : "unknown error"}`);
+    render();
+  }
+});
+
+elements.quickDeploySeasonBtn?.addEventListener("click", () => {
+  const reason = elements.quickDeploySeasonBtn?.dataset?.blockReason || "";
+  if (reason) {
+    log(reason);
+    render();
+    return;
+  }
+  if (state.turn !== "player" || state.gameOver) return;
+  if (state.phase !== "メインフェイズ") {
+    log("メインフェイズでのみ行動できます");
+    render();
+    return;
+  }
+  if (state.handLimit.active) return;
+  const picked = getSelectedHandCard?.() ?? null;
+  const card = picked?.card ?? null;
+  if (!picked || !card || card.attribute !== "季節札") {
+    log("展開する【季節札】を手札から選択してください");
+    render();
+    return;
+  }
+  const replacing = state.player?.seasonField?.name ? `（現在:${state.player.seasonField.name}）` : "";
+  const pickedFrom = picked.from;
+  const pickedId = card.id;
+  confirmAction(`【季節札】「${card.name}」を展開します${replacing}。よろしいですか？`, () => {
+    const origin = pickedFrom === "openHand" ? state.player.openHand : state.player.hand;
+    const cardNow = origin.find((c) => c?.id === pickedId) || null;
+    if (!cardNow) {
+      log("選択が変わったため、もう一度札を選択してください");
+      render();
+      return;
+    }
+    pushUndo(`deploy:season:${cardNow.id}`);
+    const decl = meetsDeclarationForCard(state.player, cardNow);
+    if (!decl.ok) {
+      log(decl.reason);
+      render();
+      return;
+    }
+    if (!canPlayCard(state.player, cardNow)) {
+      log(getCannotPlayReason(state.player, cardNow) || "魂条件またはコストが足りない");
+      render();
+      return;
+    }
+    const removed = removeCardById(origin, cardNow.id);
+    if (!removed) return;
+    playCard(state.player, state.enemy, removed, "自分");
+    if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
+    clearHandSelection();
+    checkWinner();
+    render();
+  });
+});
+
+elements.quickUseToolBtn?.addEventListener("click", () => {
+  const reason = elements.quickUseToolBtn?.dataset?.blockReason || "";
+  if (reason) {
+    log(reason);
+    render();
+    return;
+  }
+  if (state.turn !== "player" || state.gameOver) return;
+  if (state.phase !== "メインフェイズ") {
+    log("メインフェイズでのみ行動できます");
+    render();
+    return;
+  }
+  if (state.handLimit.active) return;
+  const picked = getSelectedHandCard?.() ?? null;
+  const card = picked?.card ?? null;
+  if (!picked || !card || card.attribute !== "道具札") {
+    log("発動する【道具札】を手札から選択してください");
+    render();
+    return;
+  }
+  const pickedFrom = picked.from;
+  const pickedId = card.id;
+  confirmAction(`【道具札】「${card.name}」を発動します。よろしいですか？`, () => {
+    const origin = pickedFrom === "openHand" ? state.player.openHand : state.player.hand;
+    const cardNow = origin.find((c) => c?.id === pickedId) || null;
+    if (!cardNow) {
+      log("選択が変わったため、もう一度札を選択してください");
+      render();
+      return;
+    }
+    pushUndo(`use:tool:${cardNow.id}`);
+    const decl = meetsDeclarationForCard(state.player, cardNow);
+    if (!decl.ok) {
+      log(decl.reason);
+      render();
+      return;
+    }
+    if (!canPlayCard(state.player, cardNow)) {
+      log(getCannotPlayReason(state.player, cardNow) || "魂条件またはコストが足りない");
+      render();
+      return;
+    }
+    const removed = removeCardById(origin, cardNow.id);
+    if (!removed) return;
+    playCard(state.player, state.enemy, removed, "自分");
+    clearHandSelection();
+    checkWinner();
+    render();
+  });
+});
+
+elements.quickReturnHandBtn?.addEventListener("click", () => {
+  const reason = elements.quickReturnHandBtn?.dataset?.blockReason || "";
+  if (reason) {
+    log(reason);
+    render();
+    return;
+  }
+  const picked = getSelectedHandCard?.() ?? null;
+  if (!picked || picked.from !== "openHand") return;
+  const card = picked.card;
+  pushUndo(`move:hand:${card.id}`);
+  const removed = removeCardById(state.player.openHand, card.id);
+  if (!removed) return;
+  state.player.hand.push(removed);
+  log(`${removed.name}を手札に戻した`);
+  clearHandSelection();
+  render();
+});
+
+elements.quickPossessBtn?.addEventListener("click", () => {
+  const reason = elements.quickPossessBtn?.dataset?.blockReason || "";
+  if (reason) {
+    log(reason);
+    render();
+    return;
+  }
+  const picked = getSelectedHandCard?.() ?? null;
+  const card = picked?.card ?? null;
+  if (!picked || !card || card.attribute !== "怪異札") {
+    log("憑依する【怪異札】を手札から選択してください");
+    render();
+    return;
+  }
+  const targetId = state.ui?.possessTargetId || "";
+  if (!targetId) {
+    log("先に憑依先の【場所札】をクリックして選択してください");
+    render();
+    return;
+  }
+  const pickedFrom = picked.from;
+  const pickedId = card.id;
+  confirmAction(`【怪異札】「${card.name}」を「${targetId}」へ憑依します。よろしいですか？`, () => {
+    const origin = pickedFrom === "openHand" ? state.player.openHand : state.player.hand;
+    const cardNow = origin.find((c) => c?.id === pickedId) || null;
+    if (!cardNow) {
+      log("選択が変わったため、もう一度札を選択してください");
+      render();
+      return;
+    }
+    pushUndo(`possess:${cardNow.id}->${targetId}`);
+    const decl = meetsDeclarationForCard(state.player, cardNow);
+    if (!decl.ok) {
+      log(decl.reason);
+      render();
+      return;
+    }
+    // 手札から取り除いて憑依
+    const removed = removeCardById(origin, cardNow.id);
+    if (!removed) return;
+    if (!attachPossession(state.player, targetId, removed)) {
+      state.player.openHand.push(removed);
+      log("憑依先を失ったので怪異札を手札公開場に置いた");
+      clearHandSelection();
+      render();
+      return;
+    }
+    log(`怪異札（${removed.name}）を憑依した: ${targetId}`);
+    if (decl.needKey) consumeMainSubphase(state.player, decl.needKey);
+    clearHandSelection();
+    state.ui.possessTargetId = "";
+    render();
+  });
+});
+
+const initErrorLogToInGameLog = (() => {
+  let inited = false;
+  return () => {
+    if (inited) return;
+    inited = true;
+    window.addEventListener("error", (e) => {
+      const msg = e?.message || "unknown error";
+      log(`エラー: ${msg}`);
+      render();
+    });
+    window.addEventListener("unhandledrejection", (e) => {
+      const reason = e?.reason;
+      const msg =
+        typeof reason === "string"
+          ? reason
+          : reason?.message
+            ? String(reason.message)
+            : "unhandled rejection";
+      log(`エラー: ${msg}`);
+      render();
+    });
+  };
+})();
 
 
 applyPlaymatSettings();
 initBgmUi();
 initBgmAutostart();
-initDragAndDrop();
+initErrorLogToInGameLog();
 initDeckChoiceUi();
 initMobileUi();
 resetGame();
